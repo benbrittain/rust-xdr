@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use syntax;
 use aster;
 
+use parser;
+
 // Hey Ben, Where you left off
 // you were going to move things into the Node enum, and try to make a unified codegen function
 // you haven't tried parsing or gening Unions yet
@@ -89,6 +91,27 @@ named!(struct_id<&str>,
     )
 );
 
+named!(union_id<&str>,
+    map_res!(
+        do_parse!(
+                    tag!("union")               >>
+                    opt!(multispace)            >>
+            name:   take_until!(" ")            >>
+                    opt!(multispace)            >>
+                    tag!("switch")              >>
+                    opt!(multispace)            >>
+                    tag!("(")                   >>
+            s_type: type_                       >>
+            s_name: take_until!(")")            >>
+                    tag!(")")                   >>
+                    opt!(multispace)            >>
+                    tag!("{")                   >>
+            (name)
+        ),
+        str::from_utf8
+    )
+);
+
 named!(struct_args<&[u8], (parsed_type, &str)>,
   do_parse!(
     type_: type_                                     >>
@@ -159,6 +182,15 @@ named!(struct_<&[u8], Node>,
         (Node::parsed_struct{id: id, args: args})
     )
 );
+
+//named!(union<&[u8], &str>,
+//    do_parse!(
+//				opt!(multispace)		>>
+//        id:     union_id                >>
+//				opt!(multispace)		>>
+//        (id.id)
+//    )
+//);
 
 
 named!(type_<&[u8], parsed_type>,
@@ -257,35 +289,41 @@ fn codegen_type(node: parsed_type) -> syntax::ptr::P<syntax::ast::Ty> {
     }
 }
 
-named!(statements<&[u8], Vec<Node> >, many0!(alt!(enumerator | struct_)));
+named!(statements<&[u8], Vec<Node> >, many0!(alt!(enumerator | struct_ | typedef)));
 
 pub fn compile(path : &Path) -> Result<i32, &str> {
     let fin = File::open(path);
     let mut source = String::new();
     let _ = fin.unwrap().read_to_string(&mut source);
+
     let bytes = source.into_bytes();
     let mut not_yet_parsed = bytes.as_slice();
+    let tokens = parser::parse(not_yet_parsed, true);
 
-    let builder = aster::AstBuilder::new();
-    let mut block = builder.block();
 
-    let res = statements(not_yet_parsed);
 
-    match res {
-        IResult::Done(unparsed, parsed) => {
-            println!("{:?}", parsed);
-			let out = str::from_utf8(&unparsed).unwrap();
-            println!("{:?}", out);
-			//let block = block.stmt().item().type_("test").build_ty(codegen_type(parsed));
-            //println!("{}", syntax::print::pprust::block_to_string(&block.build()));
-        }
-        IResult::Error(err) => {
-                println!("Error: {}", err);
-        }
-        IResult::Incomplete(needed) => {
-			println!("Incomplete {:?}", needed);
-		}
-    }
+    //let builder = aster::AstBuilder::new();
+    //let mut block = builder.block();
+
+
+    //let res = statements(not_yet_parsed);
+    ////let res = union_id(not_yet_parsed);
+
+    //match res {
+    //    IResult::Done(unparsed, parsed) => {
+    //        println!("{:?}", parsed);
+	//		let out = str::from_utf8(&unparsed).unwrap();
+    //        println!("{:?}", out);
+	//		//let block = block.stmt().item().type_("test").build_ty(codegen_type(parsed));
+    //        //println!("{}", syntax::print::pprust::block_to_string(&block.build()));
+    //    }
+    //    IResult::Error(err) => {
+    //            println!("Error: {}", err);
+    //    }
+    //    IResult::Incomplete(needed) => {
+	//		println!("Incomplete {:?}", needed);
+	//	}
+    //}
 
     //let out = block.build();
     //println!("{}", syntax::print::pprust::block_to_string(&out));
