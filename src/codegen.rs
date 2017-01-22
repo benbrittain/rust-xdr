@@ -43,7 +43,14 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
                         convert_basic_token(field_id).as_str(),
                         convert_basic_token(field_type).as_str());
                 },
-                _ => { }
+                Token::StringDecl{size: ref size, id: ref field_id} => {
+                    wr.field_decl(
+                        // TODO Manage sized strings
+                        convert_basic_token(field_id).as_str(), "String");
+                },
+                _ => {
+                    println!("UNIMPLEMENTED STRUCT FIELD");
+                }
             };
         }
     });
