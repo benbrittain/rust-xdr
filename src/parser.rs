@@ -11,12 +11,11 @@ pub enum Type {
     Float,
     Double,
     Quadruple,
-//    Optional,
 }
 
 #[derive(Debug, Clone)]
 pub enum Token {
-    Constant(i64), // Needs specs
+    Constant(i64),
     Type(Type),
     Enum(Vec<(Token, Token)>),
     Struct(Vec<Token>),
@@ -34,15 +33,34 @@ pub enum Token {
     TypeDef(Box<Token>),
     EnumDef{id: Box<Token>, decl: Box<Token>},
     StructDef{id: Box<Token>, decl: Box<Token>},
+    UnionDef{id: Box<Token>, decl: Box<Token>},
+    UnionCase {
+        vals: Vec<Token>,
+        decl: Box<Token>
+    },
+    Union {
+        decl: Box<Token>,
+        cases: Vec<Token>,
+        default: Box<Option<Token>>
+    },
     Comment(String),
     CodeSnippet(String),
 }
 
 named!(eol, tag!("\n"));
 
+named!(inline_comment, do_parse!(
+        tag!("//") >>
+        comment: take_until!("\n") >>
+        (comment)
+    )
+);
+
+
 named!(blank<Token>,
-    chain!(
-        alt!(multispace | eol), || Token::Blank
+    do_parse!(
+        alt!(multispace | eol) >>
+        (Token::Blank)
     )
 );
 
@@ -91,13 +109,27 @@ named!(type_def<Token>,
             })
         ) |
         do_parse!(
+            tag!("union")       >>
+            multispace          >>
+     ident: identifier          >>
+            multispace          >>
+      decl: union_body          >>
+            opt!(multispace)    >>
+            tag!(";")           >>
+            (Token::UnionDef{
+                id: Box::new(ident),
+                decl: Box::new(decl)
+            })
+        ) |
+        do_parse!(
             tag!("struct")      >>
             multispace          >>
      ident: identifier          >>
             multispace          >>
-      decl: struct_body           >>
+      decl: struct_body         >>
             opt!(multispace)    >>
             tag!(";")           >>
+            opt!(multispace)    >>
             (Token::StructDef{
                 id: Box::new(ident),
                 decl: Box::new(Token::Struct(decl))
@@ -141,6 +173,7 @@ named!(constant_def<Token>,
      c: constant            >>
         opt!(multispace)    >>
         tag!(";")           >>
+        opt!(inline_comment)>>
         (Token::ConstantDef(Box::new(c)))
     )
 );
@@ -183,9 +216,110 @@ named!(type_specifier<Token>,
             tag!("bool") >>
             (Token::Type(Type::Bool))
         ) |
+        // These aren't standard XDR, but what I'm attempting to interop
+        // with uses them like they are... so oh well
+        do_parse!(
+            tag!("u_int32_t") >>
+            (Token::Type(Type::Uint))
+        ) |
+        do_parse!(
+            tag!("int32_t") >>
+            (Token::Type(Type::Int))
+        ) |
+        do_parse!(
+            tag!("u_int64_t") >>
+            (Token::Type(Type::Uhyper))
+            ) |
+        do_parse!(
+            tag!("u_int64_t") >>
+            (Token::Type(Type::Hyper))
+            ) |
+        // There are standard XDR again!
         enum_type_specifier |
-        struct_type_specifier
+        struct_type_specifier |
+        union_type_specifier |
+        identifier
     )
+);
+
+named!(union_type_specifier<Token>,
+    do_parse!(
+        tag!("union")        >>
+        multispace           >>
+ union: union_body           >>
+        (union)
+    )
+);
+
+named!(union_case<&[u8], Token>,
+    do_parse!(
+        opt!(multispace)        >>
+ cases: many1!(case_def)        >>
+        opt!(multispace)        >>
+  decl: declaration             >>
+        opt!(multispace)        >>
+        tag!(";")               >>
+        opt!(multispace)        >>
+        opt!(inline_comment)    >>
+        opt!(multispace)        >>
+        (Token::UnionCase {
+               vals: cases,
+               decl: Box::new(decl)
+        })
+    )
+);
+
+named!(default_case<&[u8], Token>,
+    do_parse!(
+        opt!(multispace)        >>
+        tag!("default:")        >>
+        opt!(multispace)        >>
+  decl: declaration             >>
+        opt!(multispace)        >>
+        tag!(";")               >>
+        opt!(multispace)        >>
+        opt!(inline_comment)    >>
+        opt!(multispace)        >>
+        (decl)
+    )
+);
+
+named!(case_def<&[u8], Token>,
+       do_parse!(
+           tag!("case")         >>
+           opt!(multispace)     >>
+    value: value                >>
+           opt!(multispace)     >>
+           tag!(":")            >>
+           opt!(multispace)     >>
+           opt!(inline_comment) >>
+           opt!(multispace)     >>
+           (value)
+       )
+);
+
+named!(union_body<&[u8], Token>,
+       do_parse!(
+           tag!("switch")       >>
+           opt!(multispace)     >>
+           tag!("(")            >>
+           opt!(multispace)     >>
+     decl: declaration          >>
+           opt!(multispace)     >>
+           tag!(")")            >>
+           opt!(multispace)     >>
+           tag!("{")            >>
+    cases: many1!(union_case)   >>
+           opt!(multispace)     >>
+  default: opt!(default_case)   >>
+           opt!(multispace)     >>
+           tag!("}")            >>
+           (Token::Union {
+               decl: Box::new(decl),
+               cases: cases,
+               default: Box::new(default),
+           })
+       )
 );
 
 named!(enum_type_specifier<Token>,
@@ -220,6 +354,8 @@ named!(enum_kv<&[u8], (Token, Token)>,
         opt!(multispace)        >>
         opt!(tag!(","))         >>
         opt!(multispace)        >>
+        opt!(inline_comment)    >>
+        opt!(multispace)        >>
         (key, val)
     )
 );
@@ -250,6 +386,9 @@ named!(struct_decls<&[u8], Token>,
   decl: declaration             >>
         opt!(multispace)        >>
         tag!(";")               >>
+        opt!(multispace)        >>
+        opt!(inline_comment)    >>
+        opt!(multispace)        >>
         (decl)
     )
 );
@@ -355,7 +494,10 @@ named!(identifier<Token>,
 
 #[inline]
 pub fn is_ident(chr:u8) -> bool {
-    (chr >= 0x41 && chr <= 0x5A) || (chr >= 0x61 && chr <= 0x7A) || chr == 0x5f
+    (chr >= 0x41 && chr <= 0x5A) ||
+    (chr >= 0x61 && chr <= 0x7A) ||
+    (chr >= 0x30 && chr <= 0x39) ||
+    chr == 0x5f
 }
 
 named!(expression<Token>,
