@@ -8,3 +8,5 @@ nightly = []
 
 [dependencies]
 nom = "^2.0"
+docopt = "0.6"
+rustc-serialize = "0.3"
