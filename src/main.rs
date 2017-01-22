@@ -1,17 +1,17 @@
-#![cfg_attr(not(feature = "with-syntex"), feature(rustc_private))]
+#![feature(rustc_private)]
 
 #[macro_use]
 extern crate nom;
-extern crate aster;
 
-#[cfg(feature = "with-syntex")]
-extern crate syntex_syntax as syntax;
+use std::fs::File;
+use std::str;
+use std::io::{Write, Read};
+use std::io::BufWriter;
 
-#[cfg(not(feature = "with-syntex"))]
-extern crate syntax;
-
-mod xdrgen;
 mod parser;
+mod codegen;
+mod code_writer;
+use code_writer::CodeWriter;
 
 use std::path::Path;
 
@@ -19,5 +19,13 @@ fn main() {
     let path = Path::new("shared_defs.x");
     let file = path.file_name().unwrap();
     println!("{:?}", file);
-    xdrgen::compile(path).expect("XDR->Rust codegen failed");
+
+    let mut vec = Vec::new();
+
+    {
+        let mut wr = CodeWriter::new(&mut vec);
+        codegen::compile(&mut wr, path).expect("XDR->Rust codegen failed");
+    }
+
+    println!("{:?}", str::from_utf8(vec.as_ref()).unwrap().to_string());
 }

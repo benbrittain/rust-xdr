@@ -3,12 +3,8 @@ name = "xdrproto"
 version = "0.1.0"
 authors = ["Ben Brittain <ben@brittain.org>"]
 
-
 [features]
-default = ["aster/with-syntex", "syntex_syntax"]
 nightly = []
 
 [dependencies]
-aster = { version = "*", default_features = false }
-syntex_syntax = { version = "*", optional = true }
 nom = "^2.0"
