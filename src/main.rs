@@ -21,13 +21,12 @@ use code_writer::CodeWriter;
 
 const USAGE: &'static str = "
 xdrust: an XDR compiler (RFC4506 compliant + some extras) for Rust
-Usage:
-    xdrust <input> <output>
-    xdrust --version
 
-    Options:
-        -h --help     Show this screen.
-        --version     Show version.
+Usage:
+  xdrust <input> <output>
+
+Options:
+  -h --help     Show this screen.
 ";
 
 #[derive(Debug, RustcDecodable)]

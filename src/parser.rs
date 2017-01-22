@@ -185,54 +185,66 @@ named!(type_specifier<Token>,
             tag!("unsigned") >>
             multispace >>
             tag!("int") >>
+            multispace >>
             (Token::Type(Type::Uint))
         ) |
         do_parse!(
             tag!("int") >>
+            multispace >>
             (Token::Type(Type::Int))
         ) |
         do_parse!(
             tag!("unsigned") >>
             multispace >>
             tag!("hyper") >>
+            multispace >>
             (Token::Type(Type::Uhyper))
         ) |
         do_parse!(
             tag!("hyper") >>
+            multispace >>
             (Token::Type(Type::Hyper))
         ) |
         do_parse!(
             tag!("float") >>
+            multispace >>
             (Token::Type(Type::Float))
         ) |
         do_parse!(
             tag!("double") >>
+            multispace >>
             (Token::Type(Type::Double))
         ) |
         do_parse!(
             tag!("quadruple") >>
+            multispace >>
             (Token::Type(Type::Quadruple))
         ) |
         do_parse!(
             tag!("bool") >>
+            multispace >>
             (Token::Type(Type::Bool))
         ) |
         // These aren't standard XDR, but what I'm attempting to interop
         // with uses them like they are... so oh well
         do_parse!(
             tag!("u_int32_t") >>
+            multispace >>
             (Token::Type(Type::Uint))
         ) |
         do_parse!(
             tag!("int32_t") >>
+            multispace >>
             (Token::Type(Type::Int))
         ) |
         do_parse!(
             tag!("u_int64_t") >>
+            multispace >>
             (Token::Type(Type::Uhyper))
             ) |
         do_parse!(
             tag!("u_int64_t") >>
+            multispace >>
             (Token::Type(Type::Hyper))
             ) |
         // There are standard XDR again!
@@ -434,7 +446,7 @@ named!(declaration<Token>,
         ) |
         do_parse!(
         ty: type_specifier      >>
-            multispace          >>
+            opt!(multispace)    >>
         id: identifier          >>
             tag!("[")           >>
         sz: value               >>
@@ -447,7 +459,7 @@ named!(declaration<Token>,
         ) |
         do_parse!(
         ty: type_specifier      >>
-            multispace          >>
+            opt!(multispace)    >>
         id: identifier          >>
             tag!("<")           >>
         sz: opt!(value)         >>
@@ -471,7 +483,7 @@ named!(declaration<Token>,
         ) |
         do_parse!(
         ty: type_specifier      >>
-            multispace          >>
+            opt!(multispace)    >>
         id: identifier          >>
             (Token::Decl {
                 ty: Box::new(ty),
