@@ -121,7 +121,7 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
 
     #[inline]
     fn serialize_unit(&mut self) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        Ok(())
 	}
 
     #[inline]

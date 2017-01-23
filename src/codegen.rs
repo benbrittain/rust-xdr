@@ -28,7 +28,7 @@ pub fn rustify(underscores: &String) -> String {
     collect
 }
 
-fn convert_basic_token(ident: &Token) -> String {
+fn convert_basic_token(ident: &Token, is_type: bool) -> String {
     let type_ = match *ident {
         Token::Type(ref ty) => {
             match *ty {
@@ -42,7 +42,13 @@ fn convert_basic_token(ident: &Token) -> String {
                 _ => { String::from("UNSUPORTED_TYPE") }
             }
         },
-        Token::Ident(ref ty) => { rustify(&ty.clone()) },
+        Token::Ident(ref ty) => {
+            if is_type {
+                rustify(ty)
+            } else {
+                ty.clone()
+            }
+        },
         Token::Constant(ref val) => { val.to_string() },
         _ => { String::from("UNSUPORTED_TYPE") }
     };
@@ -59,13 +65,13 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
             match *field {
                 Token::Decl{ty: ref field_type, id: ref field_id} => {
                     wr.field_decl(
-                        convert_basic_token(field_id).as_str(),
-                        convert_basic_token(field_type).as_str());
+                        convert_basic_token(field_id, false).as_str(),
+                        convert_basic_token(field_type, true).as_str());
                 },
                 Token::StringDecl{size: _, id: ref field_id} => {
                     wr.field_decl(
                         // TODO Manage sized strings
-                        convert_basic_token(field_id).as_str(), "String");
+                        convert_basic_token(field_id, false).as_str(), "String");
                 },
                 _ => {
                     println!("UNIMPLEMENTED STRUCT FIELD");
@@ -85,12 +91,12 @@ fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) ->
         for &(ref field_id, ref field_val) in fields.iter() {
             match *field_val {
                 Token::Blank => {
-                    wr.enum_decl(convert_basic_token(field_id).as_str(), "");
+                    wr.enum_decl(convert_basic_token(field_id, false).as_str(), "");
                 }
                 _ => {
                     wr.enum_decl(
-                        convert_basic_token(field_id).as_str(),
-                        convert_basic_token(field_val).as_str());
+                        convert_basic_token(field_id, false).as_str(),
+                        convert_basic_token(field_val, false).as_str());
                 }
             }
         }
@@ -101,19 +107,19 @@ fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) ->
 fn write_typedef(def: Token, wr: &mut CodeWriter) -> bool {
     match def {
         Token::VarArrayDecl{ty, id, size} => {
-            wr.alias(convert_basic_token(&id), |wr| {
-                wr.var_vec(convert_basic_token(&ty).as_str());
+            wr.alias(convert_basic_token(&id, true), |wr| {
+                wr.var_vec(convert_basic_token(&ty, true).as_str());
             });
         },
         Token::StringDecl{id, size} => {
-            wr.alias(convert_basic_token(&id), |wr| {
+            wr.alias(convert_basic_token(&id, true), |wr| {
                 // TODO Size this somehow. maybe make these &[u8]
                 wr.write(String::from("String"));
             });
         },
         Token::Decl{ty, id} => {
-            wr.alias(convert_basic_token(&id), |wr| {
-                wr.write(convert_basic_token(&ty).as_str());
+            wr.alias(convert_basic_token(&id, true), |wr| {
+                wr.write(convert_basic_token(&ty, true).as_str());
             });
         },
         _ => {

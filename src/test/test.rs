@@ -5,9 +5,17 @@ extern crate serde;
 extern crate serde_xdr;
 
 mod gen_test;
+use gen_test::*;
 
 fn main() {
 //    let x: gen_test::PrivilegeGroupsT = 42;
-    let vec = serde_xdr::to_bytes(&gen_test::GeoExperimentMultiUseridStrategy::EMUNUMMULTIUSERSTRATEGY);
+    let test = LocationCluster {
+        locid: 23u32,
+        last_updated: 0,
+        cluster_id: 10,
+        cluster_type: ClusterType::CT_EXPERIMENT_CLUSTER_V0
+    };
+
+    let vec = serde_xdr::to_bytes(&test);
     println!("{:?}", vec);
 }
