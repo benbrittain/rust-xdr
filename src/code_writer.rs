@@ -48,7 +48,7 @@ impl<'a> CodeWriter<'a> {
 
     pub fn alias<S : AsRef<str>, F>(&mut self, name: S, cb: F)
         where F : Fn(&mut CodeWriter) {
-            self.write(&format!("type {} = ", name.as_ref()));
+            self.write(&format!("pub type {} = ", name.as_ref()));
             cb(self);
             self.write_line(";")
     }

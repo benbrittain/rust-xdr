@@ -8,6 +8,11 @@ pub mod error;
 
 use std::io::{Write, Read};
 
+use serde::Serialize;
+
+pub use self::error::{EncoderError, EncoderResult};
+//pub use self::xdr_values::{XdrValue};
+
 pub use self::ser::{
     Serializer,
     //to_writer,
@@ -36,3 +41,16 @@ pub use self::ser::{
 //    try!(serialize_into(&mut writer, value, SizeLimit::Infinite));
 //    Ok(writer)
 //}
+
+
+pub fn to_bytes<T>(value: &T) -> EncoderResult<Vec<u8>>
+where T: Serialize
+{
+    let mut writer = Vec::with_capacity(128);
+    {
+        let mut ser = Serializer::new(&mut writer);
+        try!(value.serialize(&mut ser));
+    }
+//  Ok(ser.into_inner())
+    Ok(writer)
+}
