@@ -7,6 +7,7 @@ use serde::ser::Serialize;
 use byteorder::{BigEndian, WriteBytesExt}; // This is unfair for the VAX
 
 use error::{EncoderResult, EncoderError};
+use super::to_bytes;
 
 
 #[derive(Clone, Debug, PartialEq)]
@@ -33,15 +34,21 @@ impl<W: io::Write> Serializer<W> {
 
 }
 
+#[derive(Debug)]
+pub struct MapState {
+    size: usize,
+    slots: Vec<u8>
+}
+
 impl<W: io::Write> ser::Serializer for Serializer<W> {
     type Error = EncoderError;
     // TODO These are all wrong
     type SeqState = Option<usize>;
-    type TupleState = bool;
-    type MapState = Option<usize>;
+    type MapState = MapState;
     type StructState = Self::MapState;
-    type TupleStructState = bool;
     type StructVariantState = Self::MapState;
+    type TupleState = bool;
+    type TupleStructState = bool;
     type TupleVariantState = ();
 
     #[inline]
@@ -141,29 +148,36 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
 
     #[inline]
     fn serialize_unit_struct(&mut self, _name: &'static str) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        Err(EncoderError::Unknown(String::from("Unit Struct")))
     }
 
     #[inline]
     fn serialize_newtype_struct<T>(&mut self, _name: &'static str, value: T)
                                    -> EncoderResult<()> where T: Serialize {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        Err(EncoderError::Unknown(String::from("Newtype struct")))
     }
 
     #[inline]
-    fn serialize_struct(&mut self, _name: &'static str, len: usize) -> EncoderResult<Self::MapState> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+    fn serialize_struct(&mut self, name: &'static str, len: usize) -> EncoderResult<Self::MapState> {
+        println!("struct name: {} size: {}", name, len);
+        Ok(MapState {
+            size: len,
+            slots: Vec::new(),
+        })
     }
 
     #[inline]
     fn serialize_struct_elt<T: Serialize>(&mut self, state: &mut Self::MapState,
                                           key: &'static str, value: T) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        // keep state around in case we need to do something fancy
+        println!("{:?}", state);
+        state.slots.append(&mut to_bytes(&value).unwrap());
+        value.serialize(self)
     }
 
     #[inline]
     fn serialize_struct_end(&mut self, state: Self::MapState) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        Ok(())
     }
 
     #[inline]
@@ -196,18 +210,18 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
 
     #[inline]
     fn serialize_struct_variant(&mut self, _name: &str, _variant_index: usize, variant: &str,
-                                len: usize) -> EncoderResult<Option<usize>> {
+                                len: usize) -> EncoderResult<MapState> {
         Err(EncoderError::Unknown(String::from("Not Implemented")))
     }
 
     #[inline]
-    fn serialize_struct_variant_elt<T: Serialize>(&mut self, state: &mut Option<usize>,
+    fn serialize_struct_variant_elt<T: Serialize>(&mut self, state: &mut MapState,
                                                        key: &'static str, value: T) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        Ok(state.slots.append(&mut to_bytes(&value).unwrap()))
     }
 
     #[inline]
-    fn serialize_struct_variant_end(&mut self, state: Option<usize>) -> EncoderResult<()> {
+    fn serialize_struct_variant_end(&mut self, state: MapState) -> EncoderResult<()> {
         Err(EncoderError::Unknown(String::from("Not Implemented")))
     }
 
@@ -263,22 +277,22 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
     }
 
     #[inline]
-    fn serialize_map(&mut self, len: Option<usize>) -> EncoderResult<Option<usize>> {
+    fn serialize_map(&mut self, len: Option<usize>) -> EncoderResult<MapState> {
         Err(EncoderError::Unknown(String::from("Not Implemented")))
     }
 
     #[inline]
-    fn serialize_map_key<T: Serialize>(&mut self, _state: &mut Option<usize>, key: T) -> EncoderResult<()> {
+    fn serialize_map_key<T: Serialize>(&mut self, _state: &mut MapState, key: T) -> EncoderResult<()> {
         Err(EncoderError::Unknown(String::from("Not Implemented")))
     }
 
     #[inline]
-    fn serialize_map_value<T: Serialize>(&mut self, state: &mut Option<usize>, value: T) -> EncoderResult<()> {
+    fn serialize_map_value<T: Serialize>(&mut self, state: &mut MapState, value: T) -> EncoderResult<()> {
         Err(EncoderError::Unknown(String::from("Not Implemented")))
     }
 
     #[inline]
-    fn serialize_map_end(&mut self, state: Option<usize>) -> EncoderResult<()> {
+    fn serialize_map_end(&mut self, state: MapState) -> EncoderResult<()> {
         Err(EncoderError::Unknown(String::from("Not Implemented")))
     }
 }
