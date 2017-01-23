@@ -258,6 +258,11 @@ named!(type_specifier<Token>,
             multispace >>
             (Token::Type(Type::Hyper))
             ) |
+        do_parse!(
+            tag!("unsigned") >>
+            multispace >>
+            (Token::Type(Type::Uint))
+        ) |
         // There are standard XDR again!
         enum_type_specifier |
         struct_type_specifier |

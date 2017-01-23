@@ -7,16 +7,23 @@ use code_writer::CodeWriter;
 pub fn rustify(underscores: &String) -> String {
     let mut collect = String::from("");
     let chars: Vec<char> = underscores.chars().collect();
-    let mut under = true;
+    let mut under = false;
+    let mut first = true;
+    let mut i = 0; // there is a more rusty way to do this
+    let end_index = chars.len() - 1;
     for c in chars {
-        if c == '_' {
+        if c == 't' && i == end_index && under {
+            // don't push this guy, it's an annoying _t
+        } else if c == '_' {
             under = true;
-        } else if under {
+        } else if under || first {
             collect.push_str(c.to_uppercase().collect::<String>().as_str());
+            first = false;
             under = false;
         } else {
             collect.push_str(c.to_string().as_str());
         }
+        i += 1;
     }
     collect
 }
