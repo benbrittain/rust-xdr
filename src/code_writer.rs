@@ -82,7 +82,7 @@ impl<'a> CodeWriter<'a> {
     }
 
     pub fn field_decl(&mut self, name: &str, field_type: &str) {
-        self.write_line(&format!("{}: {},", name, field_type));
+        self.write_line(&format!("pub {}: {},", name, field_type));
     }
 
     pub fn expr_block<F>(&mut self, prefix: &str, cb: F)
