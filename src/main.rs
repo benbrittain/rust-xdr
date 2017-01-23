@@ -4,6 +4,8 @@
 extern crate nom;
 extern crate rustc_serialize;
 extern crate docopt;
+extern crate serde;
+extern crate serde_xdr;
 
 use std::fs::File;
 use std::str;
@@ -14,9 +16,12 @@ use std::path::Path;
 
 use docopt::Docopt;
 
+//mod test;
+//mod encoder;
 mod parser;
 mod codegen;
 mod code_writer;
+
 use code_writer::CodeWriter;
 
 const USAGE: &'static str = "
