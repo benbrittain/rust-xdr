@@ -21,7 +21,7 @@ pub struct Serializer<W> {
 }
 
 impl<W: io::Write> Serializer<W> {
-    pub fn new(writer: W, use_proto_3: bool) -> Self {
+    pub fn new(writer: W) -> Self {
         Serializer {
             writer: writer,
         }

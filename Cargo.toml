@@ -7,6 +7,14 @@ authors = ["Ben Brittain <ben@brittain.org>"]
 name = "serde_xdr"
 path = "src/serde_xdr/lib.rs"
 
+[[bin]]
+name = "xdrust"
+path = "src/main.rs"
+
+[[test]]
+name = "xdrust"
+path = "src/test.rs"
+
 [features]
 nightly = []
 

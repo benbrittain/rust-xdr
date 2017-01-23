@@ -16,7 +16,8 @@ use std::path::Path;
 
 use docopt::Docopt;
 
-//mod test;
+mod test;
+mod gen_test;
 //mod encoder;
 mod parser;
 mod codegen;
