@@ -11,9 +11,9 @@ path = "src/serde_xdr/lib.rs"
 name = "xdrust"
 path = "src/main.rs"
 
-[[test]]
-name = "xdrust"
-path = "src/test.rs"
+[[bin]]
+name = "test"
+path = "src/test/test.rs"
 
 [features]
 nightly = []
