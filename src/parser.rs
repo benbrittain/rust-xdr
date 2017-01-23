@@ -74,10 +74,17 @@ named!(code_snippet<Token>,
 );
 
 named!(comment<Token>,
-    do_parse!(
-        tag!("//") >>
-        comment: take_until_and_consume!("\n") >>
-        (Token::Comment(String::from_utf8(comment.to_vec()).unwrap()))
+    alt!(
+        do_parse!(
+            tag!("//") >>
+            comment: take_until_and_consume!("\n") >>
+            (Token::Comment(String::from_utf8(comment.to_vec()).unwrap()))
+        ) |
+        do_parse!(
+            tag!("/*") >>
+            comment: take_until_and_consume!("*/") >>
+            (Token::Comment(String::from_utf8(comment.to_vec()).unwrap()))
+        )
     )
 );
 
