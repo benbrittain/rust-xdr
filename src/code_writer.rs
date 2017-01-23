@@ -74,7 +74,11 @@ impl<'a> CodeWriter<'a> {
     }
 
     pub fn enum_decl(&mut self, name: &str, val: &str) {
-        self.write_line(&format!("{} = {},", name, val));
+        if val == "" {
+            self.write_line(&format!("{},", name));
+        } else {
+            self.write_line(&format!("{} = {},", name, val));
+        }
     }
 
     pub fn field_decl(&mut self, name: &str, field_type: &str) {

@@ -363,19 +363,31 @@ named!(enum_body<&[u8], Vec<(Token, Token)> >,
 );
 
 named!(enum_kv<&[u8], (Token, Token)>,
-    do_parse!(
-        opt!(multispace)        >>
-   key: identifier              >>
-        opt!(multispace)        >>
-        tag!("=")               >>
-        opt!(multispace)        >>
-   val: value                   >>
-        opt!(multispace)        >>
-        opt!(tag!(","))         >>
-        opt!(multispace)        >>
-        opt!(inline_comment)    >>
-        opt!(multispace)        >>
-        (key, val)
+    alt!(
+        do_parse!(
+           opt!(multispace)        >>
+      key: identifier              >>
+           opt!(multispace)        >>
+           tag!("=")               >>
+           opt!(multispace)        >>
+      val: value                   >>
+           opt!(multispace)        >>
+           opt!(tag!(","))         >>
+           opt!(multispace)        >>
+           opt!(inline_comment)    >>
+           opt!(multispace)        >>
+           (key, val)
+       ) |
+        do_parse!(
+           opt!(multispace)        >>
+      key: identifier             >>
+           opt!(multispace)        >>
+           opt!(tag!(","))         >>
+           opt!(multispace)        >>
+           opt!(inline_comment)    >>
+           opt!(multispace)        >>
+           (key, Token::Blank)
+       )
     )
 );
 

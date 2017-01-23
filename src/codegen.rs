@@ -76,9 +76,16 @@ fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) ->
     };
     wr.pub_enum(id, |wr| {
         for &(ref field_id, ref field_val) in fields.iter() {
-            wr.enum_decl(
-                convert_basic_token(field_id).as_str(),
-                convert_basic_token(field_val).as_str());
+            match *field_val {
+                Token::Blank => {
+                    wr.enum_decl(convert_basic_token(field_id).as_str(), "");
+                }
+                _ => {
+                    wr.enum_decl(
+                        convert_basic_token(field_id).as_str(),
+                        convert_basic_token(field_val).as_str());
+                }
+            }
         }
     });
     true

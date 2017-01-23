@@ -8,6 +8,6 @@ mod gen_test;
 
 fn main() {
 //    let x: gen_test::PrivilegeGroupsT = 42;
-    let vec = serde_xdr::to_bytes(&gen_test::ModeratorPrivilegeTypeT::MODPRIVFLAGMOD);
+    let vec = serde_xdr::to_bytes(&gen_test::GeoExperimentMultiUseridStrategyT::EMUNUMMULTIUSERSTRATEGY);
     println!("{:?}", vec);
 }
