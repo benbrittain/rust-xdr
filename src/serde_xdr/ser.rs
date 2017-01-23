@@ -4,7 +4,7 @@ use std::result;
 use std::io;
 use serde::ser;
 use serde::ser::Serialize;
-use byteorder::{LittleEndian, BigEndian, WriteBytesExt};
+use byteorder::{BigEndian, WriteBytesExt}; // This is unfair for the VAX
 
 use error::{EncoderResult, EncoderError};
 
@@ -83,9 +83,7 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
 
     #[inline]
     fn serialize_i32(&mut self, value: i32) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
-		// try!(self.write_opcode(b'0'));
-		//self.writer.write_i32::<LittleEndian>(value).map_err(From::from)
+        self.writer.write_i32::<BigEndian>(value).map_err(From::from)
 	}
 
     #[inline]

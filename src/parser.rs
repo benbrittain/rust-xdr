@@ -1,6 +1,5 @@
 use nom::{multispace, oct_digit, digit, hex_digit};
 use std::str;
-use std::convert::AsRef;
 
 #[derive(Debug, Clone)]
 pub enum Type {

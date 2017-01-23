@@ -1,12 +1,24 @@
-use std::path::Path;
-use std::io::prelude::*;
-use std::fs::File;
 use std::str;
-use std::collections::HashMap;
-
 use parser;
 use parser::{Token, Type};
 use code_writer::CodeWriter;
+
+pub fn rustify(underscores: &String) -> String {
+    let mut collect = String::from("");
+    let chars: Vec<char> = underscores.chars().collect();
+    let mut under = true;
+    for c in chars {
+        if c == '_' {
+            under = true;
+        } else if under {
+            collect.push_str(c.to_uppercase().collect::<String>().as_str());
+            under = false;
+        } else {
+            collect.push_str(c.to_string().as_str());
+        }
+    }
+    collect
+}
 
 fn convert_basic_token(ident: &Token) -> String {
     let type_ = match *ident {
@@ -22,7 +34,7 @@ fn convert_basic_token(ident: &Token) -> String {
                 _ => { String::from("UNSUPORTED_TYPE") }
             }
         },
-        Token::Ident(ref ty) => { ty.clone() },
+        Token::Ident(ref ty) => { rustify(&ty.clone()) },
         Token::Constant(ref val) => { val.to_string() },
         _ => { String::from("UNSUPORTED_TYPE") }
     };
@@ -31,7 +43,7 @@ fn convert_basic_token(ident: &Token) -> String {
 
 fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
     let id = match ident {
-        Token::Ident(ref id) => { id },
+        Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
     wr.pub_struct(id, |wr| {
@@ -42,7 +54,7 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
                         convert_basic_token(field_id).as_str(),
                         convert_basic_token(field_type).as_str());
                 },
-                Token::StringDecl{size: ref size, id: ref field_id} => {
+                Token::StringDecl{size: _, id: ref field_id} => {
                     wr.field_decl(
                         // TODO Manage sized strings
                         convert_basic_token(field_id).as_str(), "String");
@@ -58,7 +70,7 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
 
 fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) -> bool {
     let id = match ident {
-        Token::Ident(ref id) => { id },
+        Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
     wr.pub_enum(id, |wr| {
@@ -73,12 +85,12 @@ fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) ->
 
 fn write_typedef(def: Token, wr: &mut CodeWriter) -> bool {
     match def {
-        Token::VarArrayDecl{ty: ty, id: id, size: size} => {
+        Token::VarArrayDecl{ty, id, size} => {
             wr.alias(convert_basic_token(&id), |wr| {
                 wr.var_vec(convert_basic_token(&ty).as_str());
             });
         },
-        Token::StringDecl{id: id, size: size} => {
+        Token::StringDecl{id, size} => {
             wr.alias(convert_basic_token(&id), |wr| {
                 // TODO Size this somehow. maybe make these &[u8]
                 wr.write(String::from("String"));
@@ -100,7 +112,7 @@ fn write_typedef(def: Token, wr: &mut CodeWriter) -> bool {
 
 pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> {
     let bytes = source.into_bytes();
-    let mut not_yet_parsed = bytes.as_slice();
+    let not_yet_parsed = bytes.as_slice();
     let tokens = parser::parse(not_yet_parsed, false);
 
     wr.write_header();

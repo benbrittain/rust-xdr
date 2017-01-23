@@ -5,15 +5,12 @@ extern crate nom;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate serde;
+extern crate regex;
 extern crate serde_xdr;
 
 use std::fs::File;
 use std::str;
 use std::io::{Write, Read};
-use std::io::BufWriter;
-
-use std::path::Path;
-
 use docopt::Docopt;
 
 mod parser;
@@ -51,5 +48,5 @@ fn main() {
         codegen::compile(&mut wr, source).expect("XDR->Rust codegen failed");
     }
     let mut fout = File::create(args.arg_output).expect("error creating the module.");
-    fout.write(buffer.as_ref());
+    let _ = fout.write(buffer.as_ref());
 }
