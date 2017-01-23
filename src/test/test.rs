@@ -13,9 +13,11 @@ fn main() {
         locid: 23u32,
         last_updated: 0,
         cluster_id: 10,
-        cluster_type: ClusterType::CT_EXPERIMENT_CLUSTER_V0
+        cluster_type: ClusterType::CT_EXPERIMENT_CLUSTER_V1
     };
 
-    let vec = serde_xdr::to_bytes(&test);
-    println!("{:?}", vec);
+    let bytes = serde_xdr::to_bytes(&test);
+ //   let obj, bytes_consumed = serde_xdr::from_bytes(&bytes);
+//
+    println!("{:?}", bytes);
 }

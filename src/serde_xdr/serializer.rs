@@ -170,7 +170,6 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
     fn serialize_struct_elt<T: Serialize>(&mut self, state: &mut Self::MapState,
                                           key: &'static str, value: T) -> EncoderResult<()> {
         // keep state around in case we need to do something fancy
-        println!("{:?}", state);
         state.slots.append(&mut to_bytes(&value).unwrap());
         value.serialize(self)
     }
