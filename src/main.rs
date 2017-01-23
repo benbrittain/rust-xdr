@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+//#![feature(rustc_private)]
 
 #[macro_use]
 extern crate nom;

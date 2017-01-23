@@ -2,7 +2,6 @@ use std::path::Path;
 use std::io::prelude::*;
 use std::fs::File;
 use std::str;
-use std::io::{Write, Read};
 use std::collections::HashMap;
 
 use parser;

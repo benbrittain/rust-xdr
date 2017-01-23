@@ -4,6 +4,7 @@ extern crate serde;
 extern crate byteorder;
 
 pub mod ser;
+pub mod error;
 
 use std::io::{Write, Read};
 
