@@ -57,16 +57,16 @@ impl<'a> CodeWriter<'a> {
 
     pub fn pub_enum<S : AsRef<str>, F>(&mut self, name: S, cb: F)
         where F : Fn(&mut CodeWriter) {
+            self.write_line("");
             self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
             self.expr_block(&format!("pub enum {}", name.as_ref()), cb);
-            self.write_line("");
         }
 
     pub fn pub_struct<S : AsRef<str>, F>(&mut self, name: S, cb: F)
         where F : Fn(&mut CodeWriter) {
+            self.write_line("");
             self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
             self.expr_block(&format!("pub struct {}", name.as_ref()), cb);
-            self.write_line("");
     }
 
     pub fn var_vec(&mut self, type_: &str) {

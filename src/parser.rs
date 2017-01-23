@@ -234,6 +234,11 @@ named!(type_specifier<Token>,
         // These aren't standard XDR, but what I'm attempting to interop
         // with uses them like they are... so oh well
         do_parse!(
+            tag!("uint32_t") >>
+            multispace >>
+            (Token::Type(Type::Uint))
+        ) |
+        do_parse!(
             tag!("u_int32_t") >>
             multispace >>
             (Token::Type(Type::Uint))
@@ -366,6 +371,8 @@ named!(enum_kv<&[u8], (Token, Token)>,
     alt!(
         do_parse!(
            opt!(multispace)        >>
+           many0!(inline_comment)  >>
+           opt!(multispace)        >>
       key: identifier              >>
            opt!(multispace)        >>
            tag!("=")               >>
@@ -380,11 +387,11 @@ named!(enum_kv<&[u8], (Token, Token)>,
        ) |
         do_parse!(
            opt!(multispace)        >>
-      key: identifier             >>
+      key: identifier              >>
            opt!(multispace)        >>
            opt!(tag!(","))         >>
            opt!(multispace)        >>
-           opt!(inline_comment)    >>
+           many0!(inline_comment)  >>
            opt!(multispace)        >>
            (key, Token::Blank)
        )
