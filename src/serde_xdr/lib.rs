@@ -6,10 +6,7 @@ extern crate byteorder;
 pub mod ser;
 pub mod error;
 
-use std::io::{Write, Read};
-
 use serde::Serialize;
-
 pub use self::error::{EncoderError, EncoderResult};
 //pub use self::xdr_values::{XdrValue};
 

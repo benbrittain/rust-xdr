@@ -1,5 +1,4 @@
 use std::{io, error, fmt};
-use byteorder;
 use serde::ser;
 
 #[derive(Debug)]

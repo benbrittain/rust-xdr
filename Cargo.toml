@@ -15,12 +15,10 @@ path = "src/main.rs"
 name = "test"
 path = "src/test/test.rs"
 
-[features]
-nightly = []
-
 [dependencies]
 nom = "^2.0"
 docopt = "0.7"
 rustc-serialize = "0.3"
 serde = "*"
+serde_derive = "0.8"
 byteorder = "*"

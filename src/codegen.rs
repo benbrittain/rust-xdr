@@ -3,6 +3,7 @@ use parser;
 use parser::{Token, Type};
 use code_writer::CodeWriter;
 
+// convert from snake_case to CamelCase
 pub fn rustify(underscores: &String) -> String {
     let mut collect = String::from("");
     let chars: Vec<char> = underscores.chars().collect();

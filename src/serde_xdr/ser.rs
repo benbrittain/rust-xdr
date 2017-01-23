@@ -31,22 +31,6 @@ impl<W: io::Write> Serializer<W> {
         self.writer
     }
 
-    //#[inline]
-    //fn write_opcode(&mut self, opcode: u8) -> EncoderResult<()> {
-//  //      self.writer.write_all(&[opcode]).map_err(From::from)
-    //    self.writer.write_all(&[opcode])
-    //}
-
-    //fn serialize_value(&mut self, value: &Value) -> EncoderResult<()> {
-    //    use serde::Serializer;
-    //    match *value {
-    //        // Cases covered by the Serializer trait
-    //        //Value::None    => self.serialize_unit(),
-    //        //Value::Bool(b) => self.serialize_bool(b),
-    //        //Value::I64(i)  => self.serialize_i64(i),
-    //        //Value::F64(f)  => self.serialize_f64(f),
-    //    }
-    //}
 }
 
 impl<W: io::Write> ser::Serializer for Serializer<W> {
@@ -72,13 +56,12 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
 
     #[inline]
     fn serialize_i8(&mut self, value: i8) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        self.writer.write_i8(value).map_err(From::from)
 	}
 
     #[inline]
     fn serialize_i16(&mut self, value: i16) -> EncoderResult<()> {
-		// TODO
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        self.writer.write_i16::<BigEndian>(value).map_err(From::from)
 	}
 
     #[inline]
@@ -88,73 +71,61 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
 
     #[inline]
     fn serialize_i64(&mut self, value: i64) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
-		// TODO
+        self.writer.write_i64::<BigEndian>(value).map_err(From::from)
 	}
 
     #[inline]
     fn serialize_u8(&mut self, value: u8) -> EncoderResult<()> {
-		// TODO
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        self.writer.write_u8(value).map_err(From::from)
 	}
 
     #[inline]
     fn serialize_u16(&mut self, value: u16) -> EncoderResult<()> {
-		// TODO
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        self.writer.write_u16::<BigEndian>(value).map_err(From::from)
 	}
 
     #[inline]
     fn serialize_u32(&mut self, value: u32) -> EncoderResult<()> {
-		// TODO
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        self.writer.write_u32::<BigEndian>(value).map_err(From::from)
 	}
 
     #[inline]
     fn serialize_u64(&mut self, value: u64) -> EncoderResult<()> {
-		// TODO
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+        self.writer.write_u64::<BigEndian>(value).map_err(From::from)
 	}
 
     #[inline]
     fn serialize_f32(&mut self, value: f32) -> EncoderResult<()> {
-		// TODO
         Err(EncoderError::Unknown(String::from("Not Implemented")))
 	}
 
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> EncoderResult<()> {
-		// TODO
         Err(EncoderError::Unknown(String::from("Not Implemented")))
 	}
 
     #[inline]
     fn serialize_char(&mut self, value: char) -> EncoderResult<()> {
-		// TODO
         Err(EncoderError::Unknown(String::from("Not Implemented")))
 	}
 
     #[inline]
     fn serialize_str(&mut self, value: &str) -> EncoderResult<()> {
-		// TODO
         Err(EncoderError::Unknown(String::from("Not Implemented")))
 	}
 
     #[inline]
     fn serialize_bytes(&mut self, value: &[u8]) -> EncoderResult<()> {
-		// TODO
         Err(EncoderError::Unknown(String::from("Not Implemented")))
 	}
 
     #[inline]
     fn serialize_unit(&mut self) -> EncoderResult<()> {
-		// TODO
         Err(EncoderError::Unknown(String::from("Not Implemented")))
 	}
 
     #[inline]
     fn serialize_usize(&mut self, value: usize) -> EncoderResult<()> {
-        // TODO
         Err(EncoderError::Unknown(String::from("Not Implemented")))
     }
 
@@ -196,9 +167,8 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
     }
 
     #[inline]
-    fn serialize_unit_variant(&mut self, _name: &str, _variant_index: usize, variant: &str)
-        -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
+    fn serialize_unit_variant(&mut self, _name: &str, variant_index: usize, variant: &str) -> EncoderResult<()> {
+        self.serialize_i32(variant_index as i32)
     }
 
     #[inline]

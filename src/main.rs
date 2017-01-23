@@ -5,7 +5,6 @@ extern crate nom;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate serde;
-extern crate regex;
 extern crate serde_xdr;
 
 use std::fs::File;
