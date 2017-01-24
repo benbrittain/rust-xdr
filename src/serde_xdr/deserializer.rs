@@ -76,7 +76,6 @@ impl<R: Read> de::Deserializer for Deserializer<R> {
         deserialize_str();
         deserialize_string();
         deserialize_unit();
-        deserialize_seq();
         deserialize_option();
         deserialize_seq_fixed_size(_len: usize,);
         deserialize_bytes();
@@ -100,7 +99,7 @@ impl<R: Read> de::Deserializer for Deserializer<R> {
                             name: &'static str,
                             fields: &'static [&'static str],
                             mut visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
-       visitor.visit_seq(StructVisitor { deserializer: self, len: fields.len() })
+       visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(fields.len() as u8) })
    }
 
 
@@ -116,6 +115,11 @@ impl<R: Read> de::Deserializer for Deserializer<R> {
                                        mut visitor: V) -> DecoderResult<V::Value> {
        visitor.visit(self)
    }
+
+   fn deserialize_seq<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
+       visitor.visit_seq(SeqVisitor { deserializer: self, len: None })
+   }
+
 }
 
 impl<R: Read> Read for Deserializer<R> {
@@ -124,17 +128,28 @@ impl<R: Read> Read for Deserializer<R> {
     }
 }
 
-struct StructVisitor<'a, R: Read + 'a> {
+struct SeqVisitor<'a, R: Read + 'a> {
     deserializer: &'a mut Deserializer<R>,
-    len: usize,
+    len: Option<u8>,
 }
 
-impl<'a, R: Read> de::SeqVisitor for StructVisitor<'a, R> {
+impl<'a, R: Read> de::SeqVisitor for SeqVisitor<'a, R> {
     type Error = EncoderError;
-
     fn visit<T>(&mut self) -> DecoderResult<Option<T>> where T: de::Deserialize {
-        if self.len > 0 {
-            self.len -= 1;
+        match self.len {
+            None => {
+                // The size of this variable object hasn't been acquired yet, so grab the first u8
+                self.len = Some(Deserialize::deserialize(self.deserializer)?);
+            },
+            Some(_) => {}
+        }
+
+        let len = self.len.unwrap();
+        if len > 0 {
+            match self.len.iter_mut().next() { // TODO there is probably an easier way to grab a mut ref to an option
+                Some(v) => *v = len - 1,
+                None => {},
+            }
             let value = Deserialize::deserialize(self.deserializer)?;
             Ok(Some(value))
         } else {
@@ -143,7 +158,7 @@ impl<'a, R: Read> de::SeqVisitor for StructVisitor<'a, R> {
     }
 
     fn end(&mut self) -> DecoderResult<()> {
-        if self.len != 0 {
+        if self.len != Some(0) {
             Err(EncoderError::Unknown(String::from("Expected an end for the struct")))
         } else {
             Ok(())

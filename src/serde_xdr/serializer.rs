@@ -96,9 +96,10 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
         serialize_tuple_variant(_name: &str, _variant_index: usize, variant: &str, _len: usize,);
         serialize_tuple_variant_end(_state: (),);
         serialize_unit_struct(_name: &'static str,);
-        //serialize_struct_variant(_name: &str, _variant_index: usize, variant: &str, len: usize,);
-        //serialize_struct_variant_end(state: MapState,);
         serialize_tuple_end(name: bool,);
+        serialize_struct_variant_end(state: MapState,);
+        serialize_tuple_struct_end(state: bool,);
+        serialize_map_end(state: MapState,);
     );
 
     #[inline]
@@ -174,15 +175,6 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
         Err(EncoderError::Unknown(String::from("Not Implemented")))
     }
 
-    #[inline]
-    fn serialize_struct_variant_end(&mut self, state: MapState) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
-    }
-    #[inline]
-    fn serialize_tuple_struct_end(&mut self, state: bool) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
-    }
-
     fn serialize_tuple(&mut self, len: usize,) -> EncoderResult<bool> {
         Err(EncoderError::Unknown(String::from("Not Implemented Tuple End")))
     }
@@ -192,21 +184,36 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
         Err(EncoderError::Unknown(String::from("Not Implemented Tuple Elt")))
     }
 
-
     #[inline]
     fn serialize_seq(&mut self, len: Option<usize>) -> EncoderResult<Option<usize>> {
-        Err(EncoderError::Unknown(String::from("Not Implemented Ser Seq")))
+        self.serialize_i8((len.unwrap() as i8));
+        Ok(len)
     }
 
     #[inline]
     fn serialize_seq_elt<T>(&mut self, state: &mut Option<usize>,
                             value: T) -> EncoderResult<()> where T: Serialize {
-        Err(EncoderError::Unknown(String::from("Not Implemented Ser Seq Elt")))
+        value.serialize(self);
+        let mut len = state.unwrap();
+        if len > 0 {
+            match state.iter_mut().next() { // TODO there is probably an easier way to grab a mut ref to an option
+                Some(v) => *v = len - 1,
+                None => {},
+            }
+            Ok(())
+        } else {
+            Err(EncoderError::Unknown(String::from("Sequence Serializer ran out of items!")))
+        }
     }
 
     #[inline]
     fn serialize_seq_end(&mut self, state: Option<usize>) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented Ser Seq Elt End")))
+        let len = state.unwrap();
+        if len != 0 {
+            Err(EncoderError::Unknown(String::from("Expected an end for the sequence")))
+        } else {
+          Ok(())
+        }
     }
 
     #[inline]
@@ -229,8 +236,4 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
         Err(EncoderError::Unknown(String::from("Not Implemented")))
     }
 
-    #[inline]
-    fn serialize_map_end(&mut self, state: MapState) -> EncoderResult<()> {
-        Err(EncoderError::Unknown(String::from("Not Implemented")))
-    }
 }
