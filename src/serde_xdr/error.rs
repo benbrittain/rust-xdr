@@ -1,5 +1,6 @@
 use std::{io, error, fmt};
 use serde::ser;
+use serde::de;
 
 #[derive(Debug)]
 pub enum EncoderError {
@@ -43,4 +44,15 @@ impl ser::Error for EncoderError {
     }
 }
 
+impl de::Error for EncoderError {
+    fn custom<T: Into<String>>(msg: T) -> EncoderError {
+        EncoderError::Unknown(msg.into())
+    }
+
+    fn end_of_stream() -> EncoderError {
+        EncoderError::Unknown(String::from("End of File!"))
+    }
+}
+
 pub type EncoderResult<T> = Result<T, EncoderError>;
+pub type DecoderResult<T> = Result<T, EncoderError>;
