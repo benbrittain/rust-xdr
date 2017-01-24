@@ -9,8 +9,8 @@ use gen_test::*;
 
 fn main() {
     let test = LocationCluster {
-        locid: 23u32,
-        last_updated: 0,
+        locid: 2i8,
+        last_updated: 5774,
         cluster_id: 10,
         cluster_type: ClusterType::CtExperimentClusterV9
     };

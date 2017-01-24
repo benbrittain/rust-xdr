@@ -10,13 +10,6 @@ use error::{EncoderResult, EncoderError};
 use super::to_bytes;
 
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Value {
-    None,
-    //Bool(bool),
-    //I64(i64),
-}
-
 pub struct Serializer<W> {
     writer: W,
 }
@@ -159,7 +152,6 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
 
     #[inline]
     fn serialize_struct(&mut self, name: &'static str, len: usize) -> EncoderResult<Self::MapState> {
-        println!("struct name: {} size: {}", name, len);
         Ok(MapState {
             size: len,
             slots: Vec::new(),
