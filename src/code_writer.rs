@@ -74,10 +74,11 @@ impl<'a> CodeWriter<'a> {
     }
 
 
-    // XXX: Pass in program name
-    pub fn program_version_request<F>(&mut self, cb: F)
+    pub fn program_version_request<S: AsRef<str>, F>(&mut self, prog_name: S,
+                                                     ver_num: i64, cb: F)
             where F: Fn(&mut CodeWriter) {
-        self.expr_block("pub enum XdrRequest", cb);
+        self.expr_block(&format!("pub enum {}RequestV{}",
+                                 prog_name.as_ref(), ver_num), cb);
 
     }
 
@@ -98,9 +99,11 @@ impl<'a> CodeWriter<'a> {
         self.raw_write(",\n");
     }
 
-    pub fn program_version_response<F>(&mut self, cb: F)
+    pub fn program_version_response<S: AsRef<str>, F>(&mut self, prog_name: S,
+                                                     ver_num: i64, cb: F)
             where F: Fn(&mut CodeWriter) {
-        self.expr_block("pub enum XdrResponse", cb);
+        self.expr_block(&format!("pub enum {}ResponseV{}",
+                                 prog_name.as_ref(), ver_num), cb);
     }
 
     pub fn version_proc_response<S1: AsRef<str>, S2: AsRef<str>>(&mut self,

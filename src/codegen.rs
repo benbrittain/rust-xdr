@@ -133,8 +133,9 @@ fn write_typedef(def: Token, wr: &mut CodeWriter) -> bool {
     true
 }
 
-fn write_version(procs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
-    wr.program_version_request(|wr| {
+fn write_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
+                 wr: &mut CodeWriter) -> bool {
+    wr.program_version_request(prog_name, ver_num, |wr| {
         for ptoken in procs {
             let (return_type, name, arg_types, id) = match *ptoken {
                 Token::Proc{
@@ -161,7 +162,7 @@ fn write_version(procs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
         }
     });
 
-    wr.program_version_response(|wr| {
+    wr.program_version_response(prog_name, ver_num, |wr| {
         for ptoken in procs {
             let (return_type, name, arg_types, id) = match *ptoken {
                 Token::Proc{
@@ -186,11 +187,44 @@ fn write_version(procs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
     true
 }
 
-fn write_program(versions: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+/*
+fn write_service(procs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+    wr.program_version_service(|wr| {
+        for ptoken in procs {
+            let (return_type, name, arg_types, id) = match *ptoken {
+                Token::Proc{
+                    ref return_type,
+                    ref name,
+                    ref arg_types,
+                    ref id} => {
+                    (return_type, name, arg_types, id)
+                }, _ => { return; }
+            };
+
+            let ret_str: Option<String> = match **return_type {
+                Token::VoidDecl => None,
+                _ => Some(convert_basic_token(return_type.as_ref(), true))
+            };
+
+            wr.version_proc_dispatch(
+                convert_basic_token(name.as_ref(), true).as_str(),
+                arg_types.len(),
+                ret_str);
+        }
+    });
+    
+    true
+}
+*/
+
+fn write_program(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+    let rust_prog_name = rustify(prog_name, true);
     for vtoken in versions {
         if let Token::Version{ref name, ref id, ref procs} = *vtoken {
-            if !write_version(&procs, wr) {
-                return false;
+            if let Token::Constant(id_num) = **id {
+                if !write_version(&rust_prog_name, id_num, &procs, wr) {
+                    return false;
+                }
             }
         }
     }
@@ -198,12 +232,14 @@ fn write_program(versions: &Vec<Token>, wr: &mut CodeWriter) -> bool {
     true
 }
 
-fn write_namespace(name: String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
     wr.namespace(name, |wr| {
         for ptoken in progs {
             if let Token::Program{ref name, ref id, ref versions} = *ptoken {
-                write_program(&versions, wr);
-                ()
+                if let Token::Ident(ref name_str) = **name{
+                    write_program(name_str, &versions, wr);
+                    ()
+                }
             }
         }
     });
@@ -219,7 +255,7 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
     wr.write_header();
 
     for token in tokens.unwrap() {
-        println!("{:?}", token);
+        //println!("{:?}", token);
         match token {
             // These three tokens are useless to us, just ignore them
             Token::Blank => {},
@@ -247,11 +283,16 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
                 write_typedef(*def, wr);
             },
             Token::Program{name, id, versions} => {
-                write_program(&versions, wr);
+                match *name {
+                    Token::Ident(ref name_str) => {
+                        write_program(name_str, &versions, wr);
+                    },
+                    _ => { println!("Unparsable") }
+                }
             },
             Token::Namespace{name, progs} => {
                 match *name {
-                    Token::Ident(s) => {
+                    Token::Ident(ref s) => {
                         write_namespace(s, &progs, wr);
                     },
                     _ => { println!("Unparsable") }
