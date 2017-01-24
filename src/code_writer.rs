@@ -33,6 +33,10 @@ impl<'a> CodeWriter<'a> {
         let _ = self.writer.write_all(s.as_bytes());
     }
 
+    pub fn raw_write<S : AsRef<str>>(&mut self, text: S) {
+        let _ = self.writer.write_all(text.as_ref().to_string().as_bytes());
+    }
+
     pub fn write_line<S : AsRef<str>>(&mut self, line: S) {
         (if line.as_ref().is_empty() {
             self.writer.write_all("\n".as_bytes())
@@ -67,6 +71,46 @@ impl<'a> CodeWriter<'a> {
             self.write_line("");
             self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
             self.expr_block(&format!("pub struct {}", name.as_ref()), cb);
+    }
+
+
+    // XXX: Pass in program name
+    pub fn program_version_request<F>(&mut self, cb: F)
+            where F: Fn(&mut CodeWriter) {
+        self.expr_block("pub enum XdrRequest", cb);
+
+    }
+
+    pub fn version_proc_request<S1: AsRef<str>, S2: AsRef<str>>(&mut self,
+                                                            name: S1,
+                                                            args: &Vec<S2>) {
+        self.write(name);
+        if args.len() > 0 {
+            self.raw_write("(");
+            for (i, arg) in args.iter().enumerate() {
+                if i > 0 {
+                    self.raw_write(", ");
+                }
+                self.raw_write(&format!("{}", arg.as_ref()));
+            }
+            self.raw_write(")");
+        }
+        self.raw_write(",\n");
+    }
+
+    pub fn program_version_response<F>(&mut self, cb: F)
+            where F: Fn(&mut CodeWriter) {
+        self.expr_block("pub enum XdrResponse", cb);
+    }
+
+    pub fn version_proc_response<S1: AsRef<str>, S2: AsRef<str>>(&mut self,
+                                                            name: S1,
+                                                            ret: Option<S2>) {
+        self.write(name);
+        if let Some(s) = ret {
+            self.raw_write(&format!("({})", s.as_ref()));
+        }
+        self.raw_write(",\n");
     }
 
     pub fn var_vec(&mut self, type_: &str) {

@@ -131,6 +131,77 @@ fn write_typedef(def: Token, wr: &mut CodeWriter) -> bool {
     true
 }
 
+fn write_version(procs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+    wr.program_version_request(|wr| {
+        for ptoken in procs {
+            let (return_type, name, arg_types, id) = match *ptoken {
+                Token::Proc{
+                    ref return_type,
+                    ref name,
+                    ref arg_types,
+                    ref id} => {
+                    (return_type, name, arg_types, id)
+                }, _ => { return; }
+            };
+
+            let mut arg_strings: Vec<String> = Vec::new();
+            for arg in arg_types {
+                match arg {
+                    &Token::VoidDecl => {},
+                    _ => {
+                        arg_strings.push(convert_basic_token(arg, true));
+                    }
+                }
+            }
+
+            wr.version_proc_request(convert_basic_token(name.as_ref(), true).as_str(),
+                &arg_strings);
+        }
+    });
+
+    wr.program_version_response(|wr| {
+        for ptoken in procs {
+            let (return_type, name, arg_types, id) = match *ptoken {
+                Token::Proc{
+                    ref return_type,
+                    ref name,
+                    ref arg_types,
+                    ref id} => {
+                    (return_type, name, arg_types, id)
+                }, _ => { return; }
+            };
+
+            let ret_str: Option<String> = match **return_type {
+                Token::VoidDecl => None,
+                _ => Some(convert_basic_token(return_type.as_ref(), true))
+            };
+
+            wr.version_proc_response(
+                convert_basic_token(name.as_ref(), true).as_str(), ret_str);
+        }
+    });
+
+    true
+}
+
+fn write_program(versions: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+    for vtoken in versions {
+        let (name, id, procs) = match *vtoken {
+            Token::Version{
+                ref name,
+                ref id,
+                ref procs} => (name, id, procs),
+            _ => { return false; }
+        };
+
+        if !write_version(&procs, wr) {
+            return false;
+        }
+    }
+
+    true
+}
+
 pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> {
     let bytes = source.into_bytes();
     let not_yet_parsed = bytes.as_slice();
@@ -139,6 +210,7 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
     wr.write_header();
 
     for token in tokens.unwrap() {
+        println!("{:?}", token);
         match token {
             // These three tokens are useless to us, just ignore them
             Token::Blank => {},
@@ -165,9 +237,12 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
             Token::TypeDef(def) => {
                 write_typedef(*def, wr);
             },
+            Token::Program{name, id, versions} => {
+                write_program(&versions, wr);
+            },
 			_ => {
                 println!("Codegen isn't supported for this token yet");
-                break
+                //break
                 // Err("Unsuported token")
             }
 		}

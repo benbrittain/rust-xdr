@@ -45,6 +45,14 @@ pub enum Token {
     },
     Comment(String),
     CodeSnippet(String),
+    Program{name: Box<Token>, id: Box<Token>, versions: Vec<Token>},
+    Version{name: Box<Token>, id: Box<Token>, procs: Vec<Token>},
+    Proc{
+        return_type: Box<Token>,
+        name: Box<Token>,
+        arg_types: Vec<Token>,
+        id: Box<Token>
+    },
 }
 
 named!(eol, tag!("\n"));
@@ -436,6 +444,104 @@ named!(struct_decls<&[u8], Token>,
     )
 );
 
+named!(program<Token>,
+    do_parse!(
+            tag!("program")     >>
+            multispace          >>
+      name: identifier          >>
+            opt!(multispace)    >>
+            tag!("{")           >>
+            opt!(multispace)    >>
+  versions: many0!(version)     >>
+            opt!(multispace)    >>
+            tag!("}")           >>
+            opt!(multispace)    >>
+        id: numeric_id          >>
+        multispace              >>
+            (Token::Program {
+                name: Box::new(name),
+                id: Box::new(id),
+                versions: versions
+            })
+    )
+);
+
+named!(version<Token>,
+    do_parse!(
+        tag!("version")         >>
+        multispace              >>
+  name: identifier              >>
+        opt!(multispace)        >>
+        tag!("{")               >>
+        opt!(multispace)        >>
+ procs: many0!(rpc_proc)        >>
+        opt!(multispace)        >>
+        tag!("}")               >>
+        opt!(multispace)        >>
+    id: numeric_id              >>
+        opt!(multispace)        >>
+        (Token::Version {
+            name: Box::new(name),
+            id: Box::new(id),
+            procs: procs
+        })
+
+    )
+);
+
+named!(rpc_proc<Token>,
+    do_parse!(
+   return_type: proc_type           >>
+                multispace          >>
+          name: identifier          >>
+                opt!(multispace)    >>
+                tag!("(")           >>
+                opt!(multispace)    >>
+     arg_types: many1!(proc_type)   >>
+                opt!(multispace)    >>
+                tag!(")")           >>
+                opt!(multispace)    >>
+            id: numeric_id          >>
+                opt!(multispace)    >>
+                (Token::Proc {
+                    return_type: Box::new(return_type),
+                    name: Box::new(name),
+                    arg_types: arg_types,
+                    id: Box::new(id)
+                })
+    )
+);
+
+named!(numeric_id<&[u8], Token>,
+    do_parse!(
+        tag!("=")               >>
+        opt!(multispace)        >>
+    id: constant                >>
+        opt!(multispace)        >>
+        tag!(";")               >>
+        (id)
+    )
+);
+
+named!(proc_type<&[u8], Token>,
+    alt!(
+        do_parse!(
+            opt!(multispace)    >>
+            tag!("void")        >>
+            //opt!(multispace)    >>
+            opt!(tag!(","))     >>
+            (Token::VoidDecl)
+        ) |
+        do_parse!(
+            opt!(multispace)    >>
+        ty: type_specifier      >>
+            //opt!(multispace)    >>
+            opt!(tag!(","))     >>
+            (ty)
+        )
+   )
+);
+
 named!(declaration<Token>,
     alt!(
         do_parse!(
@@ -544,7 +650,7 @@ pub fn is_ident(chr:u8) -> bool {
 }
 
 named!(expression<Token>,
-    alt_complete!(definition | comment | code_snippet | blank)
+    alt_complete!(definition | comment | code_snippet | blank | program)
 );
 
 named!(tokenize<Vec<Token> >, many0!(expression));
