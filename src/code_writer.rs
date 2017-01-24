@@ -96,7 +96,7 @@ impl<'a> CodeWriter<'a> {
             }
             self.raw_write(")");
         }
-        self.raw_write(",\n");
+        self.write_line(",");
     }
 
     pub fn program_version_response<S: AsRef<str>, F>(&mut self, prog_name: S,
@@ -113,7 +113,7 @@ impl<'a> CodeWriter<'a> {
         if let Some(s) = ret {
             self.raw_write(&format!("({})", s.as_ref()));
         }
-        self.raw_write(",\n");
+        self.write_line(",");
     }
 
     pub fn namespace<S: AsRef<str>, F>(&mut self, name: S, cb: F)
@@ -125,7 +125,15 @@ impl<'a> CodeWriter<'a> {
         self.write(&format!("Vec<{}>", type_));
     }
 
+    pub fn enum_struct_decl<F>(&mut self, name: &str, cb: F)
+        where F : Fn(&mut CodeWriter) {
+            self.write_line(&format!("{} {{", name));
+            self.indented(cb);
+            self.write_line("},");
+    }
+
     pub fn enum_decl(&mut self, name: &str, val: &str) {
+        // TODO is Option<&str> cleaner?
         if val == "" {
             self.write_line(&format!("{},", name));
         } else {
@@ -133,8 +141,12 @@ impl<'a> CodeWriter<'a> {
         }
     }
 
-    pub fn field_decl(&mut self, name: &str, field_type: &str) {
+    pub fn pub_field_decl(&mut self, name: &str, field_type: &str) {
         self.write_line(&format!("pub {}: {},", name, field_type));
+    }
+
+    pub fn field_decl(&mut self, name: &str, field_type: &str) {
+        self.write_line(&format!("{}: {},", name, field_type));
     }
 
     pub fn expr_block<F>(&mut self, prefix: &str, cb: F)
