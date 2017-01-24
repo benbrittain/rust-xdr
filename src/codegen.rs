@@ -23,7 +23,7 @@ pub fn rustify(underscores: &String, is_type: bool) -> String {
         } else if is_type {
             collect.push_str(c.to_lowercase().collect::<String>().as_str());
         } else {
-            collect.push_str(c.to_string().as_str());
+            collect.push_str(c.to_lowercase().collect::<String>().as_str());
         }
         i += 1;
     }
@@ -66,12 +66,12 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
         for field in fields.iter() {
             match *field {
                 Token::Decl{ty: ref field_type, id: ref field_id} => {
-                    wr.field_decl(
+                    wr.pub_field_decl(
                         convert_basic_token(field_id, false).as_str(),
                         convert_basic_token(field_type, true).as_str());
                 },
                 Token::StringDecl{size: _, id: ref field_id} => {
-                    wr.field_decl(
+                    wr.pub_field_decl(
                         // TODO Manage sized strings
                         convert_basic_token(field_id, false).as_str(), "String");
                 },
@@ -79,6 +79,52 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
                     println!("UNIMPLEMENTED STRUCT FIELD");
                 }
             };
+        }
+    });
+    true
+}
+
+fn write_union(ident: Token, decl: &Box<Token>, cases: &Vec<Token>, default: &Box<Option<Token>>, wr: &mut CodeWriter) -> bool {
+    let id = match ident {
+        Token::Ident(ref id) => { rustify(id) },
+        _ => { return false }
+    };
+    wr.pub_enum(id, |wr| {
+        for arm in cases.iter() {
+            match *arm {
+                Token::UnionCase{ref vals, ref decl} => {
+                    for case in vals.iter() {
+                        wr.enum_struct_decl(convert_basic_token(case, true).as_str(), |wr| {
+                            match **decl {
+                                Token::Decl{ref ty, ref id} => {
+                                    wr.field_decl(
+                                        convert_basic_token(id, false).as_str(),
+                                        convert_basic_token(ty, true).as_str());
+                                },
+                                _ => {}
+                            };
+                        });
+                    }
+                },
+                _ => { }
+            }
+        }
+        match **default{
+            Some(ref token) => {
+                wr.comment("Default case for the XDR Union");
+                wr.enum_struct_decl("UnionDefault_", |wr| {
+                    match *token {
+                        Token::Decl{ref ty, ref id} => {
+                            wr.field_decl(
+                                convert_basic_token(id, false).as_str(),
+                                convert_basic_token(ty, true).as_str());
+                        },
+                        Token::VoidDecl => {},
+                        _ => { println!("Invalid AST!"); }
+                    };
+                });
+            },
+            None => {}
         }
     });
     true
@@ -97,7 +143,7 @@ fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) ->
                 }
                 _ => {
                     wr.enum_decl(
-                        convert_basic_token(field_id, false).as_str(),
+                        convert_basic_token(field_id, true).as_str(),
                         convert_basic_token(field_val, false).as_str());
                 }
             }
@@ -219,7 +265,6 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
     wr.write_header();
 
     for token in tokens.unwrap() {
-        println!("{:?}", token);
         match token {
             // These three tokens are useless to us, just ignore them
             Token::Blank => {},
@@ -227,6 +272,14 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
             Token::CodeSnippet(_) => {}, // TODO maybe do something special with this
 
             // These tokens are incredibly useful
+            Token::UnionDef{id, decl} => {
+                match *decl {
+                    Token::Union{decl: ref decl, ref cases, ref default} => {
+                        write_union(*id, decl, cases, default, wr);
+                    },
+                    _ => { println!("Unparsable") }
+                };
+            },
             Token::StructDef{id, decl} => {
                 match *decl {
                     Token::Struct(fields) => {
