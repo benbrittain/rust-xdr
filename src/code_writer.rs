@@ -113,6 +113,11 @@ impl<'a> CodeWriter<'a> {
         self.raw_write(",\n");
     }
 
+    pub fn namespace<S: AsRef<str>, F>(&mut self, name: S, cb: F)
+            where F: Fn(&mut CodeWriter) {
+        self.expr_block(&format!("pub mod {}", name.as_ref()), cb)
+    }
+
     pub fn var_vec(&mut self, type_: &str) {
         self.write(&format!("Vec<{}>", type_));
     }

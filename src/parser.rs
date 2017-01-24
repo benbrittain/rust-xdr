@@ -45,6 +45,7 @@ pub enum Token {
     },
     Comment(String),
     CodeSnippet(String),
+    Namespace{name: Box<Token>, progs: Vec<Token>},
     Program{name: Box<Token>, id: Box<Token>, versions: Vec<Token>},
     Version{name: Box<Token>, id: Box<Token>, procs: Vec<Token>},
     Proc{
@@ -444,6 +445,27 @@ named!(struct_decls<&[u8], Token>,
     )
 );
 
+named!(namespace<Token>,
+    do_parse!(
+        tag!("namespace")       >>
+        multispace              >>
+  name: identifier              >>
+        opt!(multispace)        >>
+        tag!("{")               >>
+        opt!(multispace)        >>
+ progs: many0!(program)         >>
+        opt!(multispace)        >>
+        tag!("}")               >>
+        opt!(multispace)        >>
+        tag!(";")               >>
+        opt!(multispace)        >>
+        (Token::Namespace {
+            name: Box::new(name),
+            progs: progs
+        })
+    )
+);
+
 named!(program<Token>,
     do_parse!(
             tag!("program")     >>
@@ -457,7 +479,7 @@ named!(program<Token>,
             tag!("}")           >>
             opt!(multispace)    >>
         id: numeric_id          >>
-        multispace              >>
+            multispace          >>
             (Token::Program {
                 name: Box::new(name),
                 id: Box::new(id),
@@ -650,7 +672,7 @@ pub fn is_ident(chr:u8) -> bool {
 }
 
 named!(expression<Token>,
-    alt_complete!(definition | comment | code_snippet | blank | program)
+    alt_complete!(definition | comment | code_snippet | blank | namespace | program)
 );
 
 named!(tokenize<Vec<Token> >, many0!(expression));

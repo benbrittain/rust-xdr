@@ -188,18 +188,25 @@ fn write_version(procs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
 
 fn write_program(versions: &Vec<Token>, wr: &mut CodeWriter) -> bool {
     for vtoken in versions {
-        let (name, id, procs) = match *vtoken {
-            Token::Version{
-                ref name,
-                ref id,
-                ref procs} => (name, id, procs),
-            _ => { return false; }
-        };
-
-        if !write_version(&procs, wr) {
-            return false;
+        if let Token::Version{ref name, ref id, ref procs} = *vtoken {
+            if !write_version(&procs, wr) {
+                return false;
+            }
         }
     }
+
+    true
+}
+
+fn write_namespace(name: String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+    wr.namespace(name, |wr| {
+        for ptoken in progs {
+            if let Token::Program{ref name, ref id, ref versions} = *ptoken {
+                write_program(&versions, wr);
+                ()
+            }
+        }
+    });
 
     true
 }
@@ -242,6 +249,14 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
             Token::Program{name, id, versions} => {
                 write_program(&versions, wr);
             },
+            Token::Namespace{name, progs} => {
+                match *name {
+                    Token::Ident(s) => {
+                        write_namespace(s, &progs, wr);
+                    },
+                    _ => { println!("Unparsable") }
+                }
+            }
 			_ => {
                 println!("Codegen isn't supported for this token yet");
                 //break
