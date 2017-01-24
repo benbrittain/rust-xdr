@@ -4,7 +4,7 @@ use parser::{Token, Type};
 use code_writer::CodeWriter;
 
 // convert from snake_case to CamelCase
-pub fn rustify(underscores: &String, is_type: bool) -> String {
+pub fn rustify(underscores: &String) -> String {
     let mut collect = String::from("");
     let chars: Vec<char> = underscores.chars().collect();
     let mut under = false;
@@ -20,8 +20,6 @@ pub fn rustify(underscores: &String, is_type: bool) -> String {
             collect.push_str(c.to_uppercase().collect::<String>().as_str());
             first = false;
             under = false;
-        } else if is_type {
-            collect.push_str(c.to_lowercase().collect::<String>().as_str());
         } else {
             collect.push_str(c.to_lowercase().collect::<String>().as_str());
         }
@@ -46,7 +44,7 @@ fn convert_basic_token(ident: &Token, is_type: bool) -> String {
         },
         Token::Ident(ref ty) => {
             if is_type {
-                rustify(ty, is_type)
+                rustify(ty)
             } else {
                 ty.clone()
             }
@@ -59,7 +57,7 @@ fn convert_basic_token(ident: &Token, is_type: bool) -> String {
 
 fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
     let id = match ident {
-        Token::Ident(ref id) => { rustify(id, false) },
+        Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
     wr.pub_struct(id, |wr| {
@@ -86,7 +84,7 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
 
 fn write_union(ident: Token, decl: &Box<Token>, cases: &Vec<Token>, default: &Box<Option<Token>>, wr: &mut CodeWriter) -> bool {
     let id = match ident {
-        Token::Ident(ref id) => { rustify(id, true) },
+        Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
     wr.pub_enum(id, |wr| {
@@ -132,7 +130,7 @@ fn write_union(ident: Token, decl: &Box<Token>, cases: &Vec<Token>, default: &Bo
 
 fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) -> bool {
     let id = match ident {
-        Token::Ident(ref id) => { rustify(id, false) },
+        Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
     wr.pub_enum(id, |wr| {
@@ -233,35 +231,68 @@ fn write_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
     true
 }
 
-/*
-fn write_service(procs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
-    wr.program_version_service(|wr| {
-        for ptoken in procs {
-            let (return_type, name, arg_types, id) = match *ptoken {
-                Token::Proc{
-                    ref return_type,
-                    ref name,
-                    ref arg_types,
-                    ref id} => {
-                    (return_type, name, arg_types, id)
-                }, _ => { return; }
-            };
+fn write_service_proc(prog_name: &String, ver_num: i64, proc_name: &Token,
+                      arg_types: &Vec<Token>, wr: &mut CodeWriter) {
+    let arg_names = (0..arg_types.len()).filter(|x| {
+        match arg_types[*x] { Token::VoidDecl => { false}, _ => { true } }
+    }).map(|x| { format!("arg{}", x) }).collect();
+    wr.match_option(&format!("{}RequestV{}::{}",
+        rustify(prog_name), ver_num,
+        convert_basic_token(proc_name, true).as_str()), &arg_names, |wr| {
+        wr.write(&format!("self.{}_v{}(",
+            convert_basic_token(proc_name, false).as_str().to_lowercase(),
+            ver_num));
+        wr.comma_fields(&arg_names);
+        wr.raw_write(")");
+    });
+}
 
-            let ret_str: Option<String> = match **return_type {
-                Token::VoidDecl => None,
-                _ => Some(convert_basic_token(return_type.as_ref(), true))
-            };
+fn write_service_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
+                         wr: &mut CodeWriter) {
+    let version_fields = vec!["data"];
+    wr.match_option(&format!("V{}", ver_num), &version_fields, |wr| {
+        wr.match_block("data", |wr| {
+            for ptoken in procs {
+                if let Token::Proc{ref return_type, ref name, ref arg_types,
+                        ref id} = *ptoken {
+                    write_service_proc(prog_name, ver_num, (*name).as_ref(),
+                        arg_types, wr);
+                }
+            }
+        });
+    });
+}
 
-            wr.version_proc_dispatch(
-                convert_basic_token(name.as_ref(), true).as_str(),
-                arg_types.len(),
-                ret_str);
-        }
+fn write_service(prog_name: &String, versions: &Vec<Token>,
+                 wr: &mut CodeWriter) -> bool {
+    wr.program_version_service(&format!("{}Service", prog_name), |wr| {
+        wr.alias("Request", |wr| {
+            wr.raw_write(&format!("{}Request", prog_name));
+        });
+        wr.alias("Response", |wr| {
+            wr.raw_write(&format!("{}Response", prog_name));
+        });
+        wr.alias("Error", |wr| {
+            wr.raw_write("io::Error");
+        });
+        wr.alias("Future", |wr| {
+            wr.raw_write("BoxFuture<Self::Response, Self::Error>");
+        });
+        wr.dispatch_function(|wr| {
+            wr.match_block("req", |wr| {
+                for vtoken in versions {
+                    if let Token::Version{ref name, ref id, ref procs} = *vtoken {
+                        if let Token::Constant(id_num) = **id {
+                            write_service_version(prog_name, id_num, procs, wr);
+                        }
+                    }
+                }
+            });
+        });
     });
     
     true
 }
-*/
 
 fn write_version_set(prog_name: &String, versions: &Vec<Token>,
                      set_type: &str, wr: &mut CodeWriter) -> bool {
@@ -270,7 +301,7 @@ fn write_version_set(prog_name: &String, versions: &Vec<Token>,
             if let Token::Version{ref name, ref id, ref procs} = *vtoken {
                 if let Token::Constant(id_num) = **id {
                     wr.enum_tuple_decl(&format!("V{}", id_num), |w2| {
-                        w2.raw_write(&format!("{}{}{}", prog_name, set_type,
+                        w2.raw_write(&format!("{}{}V{}", prog_name, set_type,
                                               id_num));
                     })
                 }
@@ -282,7 +313,7 @@ fn write_version_set(prog_name: &String, versions: &Vec<Token>,
 }
 
 fn write_program(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter) -> bool {
-    let rust_prog_name = rustify(prog_name, true);
+    let rust_prog_name = rustify(prog_name);
 
     write_version_set(&rust_prog_name, versions, "Request", wr);
     write_version_set(&rust_prog_name, versions, "Response", wr);
@@ -306,6 +337,7 @@ fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bo
             if let Token::Program{ref name, ref id, ref versions} = *ptoken {
                 if let Token::Ident(ref name_str) = **name{
                     write_program(name_str, &versions, wr);
+                    write_service(name_str, &versions, wr);
                     ()
                 }
             }

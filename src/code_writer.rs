@@ -56,21 +56,21 @@ impl<'a> CodeWriter<'a> {
         where F : Fn(&mut CodeWriter) {
             self.write(&format!("pub type {} = ", name.as_ref()));
             cb(self);
-            self.write_line(";")
+            self.raw_write(";\n")
     }
 
     pub fn pub_enum<S : AsRef<str>, F>(&mut self, name: S, cb: F)
         where F : Fn(&mut CodeWriter) {
             self.write_line("");
             self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
-            self.expr_block(&format!("pub enum {}", name.as_ref()), cb);
+            self.expr_block(&format!("pub enum {}", name.as_ref()), false, cb);
         }
 
     pub fn pub_struct<S : AsRef<str>, F>(&mut self, name: S, cb: F)
         where F : Fn(&mut CodeWriter) {
             self.write_line("");
             self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
-            self.expr_block(&format!("pub struct {}", name.as_ref()), cb);
+            self.expr_block(&format!("pub struct {}", name.as_ref()), false, cb);
     }
 
 
@@ -82,20 +82,30 @@ impl<'a> CodeWriter<'a> {
 
     }
 
+    pub fn comma_fields<S: AsRef<str>>(&mut self, fields: &Vec<S>) {
+        for (i, arg) in fields.iter().enumerate() {
+            if i > 0 {
+                self.raw_write(", ");
+            }
+            self.raw_write(&format!("{}", arg.as_ref()));
+        }
+    }
+
+    pub fn optional_fields<S: AsRef<str>>(&mut self, fields: &Vec<S>) {
+        if fields.len() == 0 {
+            return;
+        }
+
+        self.raw_write("(");
+        self.comma_fields(fields);
+        self.raw_write(")");
+    }
+
     pub fn version_proc_request<S1: AsRef<str>, S2: AsRef<str>>(&mut self,
                                                             name: S1,
                                                             args: &Vec<S2>) {
         self.write(name);
-        if args.len() > 0 {
-            self.raw_write("(");
-            for (i, arg) in args.iter().enumerate() {
-                if i > 0 {
-                    self.raw_write(", ");
-                }
-                self.raw_write(&format!("{}", arg.as_ref()));
-            }
-            self.raw_write(")");
-        }
+        self.optional_fields(args);
         self.raw_write(",\n");
     }
 
@@ -116,9 +126,37 @@ impl<'a> CodeWriter<'a> {
         self.raw_write(",\n");
     }
 
+    pub fn program_version_service<S: AsRef<str>, F>(&mut self, service_name: S,
+                                                  cb: F)
+            where F: Fn(&mut CodeWriter) {
+        self.expr_block(&format!("impl Service for {}", service_name.as_ref()),
+            false, cb);
+    }
+
+    pub fn dispatch_function<F>(&mut self, cb: F)
+            where F: Fn(&mut CodeWriter) {
+        self.expr_block("fn call (&self, req: Self::Request) -> Self::Future",
+            false, cb);
+    }
+
+    pub fn match_block<S: AsRef<str>, F>(&mut self, s: S, cb: F)
+            where F: Fn(&mut CodeWriter) {
+        self.expr_block(&format!("match {} =>", s.as_ref()), false, cb);
+    }
+
+    pub fn match_option<S1: AsRef<str>, S2: AsRef<str>, F>(&mut self,
+                                                            type_name: S1,
+                                                            fields: &Vec<S2>,
+                                                            cb: F)
+            where F: Fn(&mut CodeWriter) {
+        self.write(type_name);
+        self.optional_fields(fields);
+        self.expr_block(" =>", true, cb);
+    }
+
     pub fn namespace<S: AsRef<str>, F>(&mut self, name: S, cb: F)
             where F: Fn(&mut CodeWriter) {
-        self.expr_block(&format!("pub mod {}", name.as_ref()), cb)
+        self.expr_block(&format!("pub mod {}", name.as_ref()), false, cb)
     }
 
     pub fn var_vec(&mut self, type_: &str) {
@@ -156,9 +194,10 @@ impl<'a> CodeWriter<'a> {
         self.write_line(&format!("{}: {},", name, field_type));
     }
 
-    pub fn expr_block<F>(&mut self, prefix: &str, cb: F)
+    pub fn expr_block<F>(&mut self, prefix: &str, comma: bool, cb: F)
         where F : Fn(&mut CodeWriter) {
-            self.block(&format!("{} {{", prefix), "}", cb);
+            self.block(&format!("{} {{", prefix), if comma { "},"} else { "}" },
+                cb);
     }
 
     pub fn block<F>(&mut self, first_line: &str, last_line: &str, cb: F)
