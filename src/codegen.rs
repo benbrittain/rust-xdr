@@ -243,7 +243,7 @@ fn write_service_proc(prog_name: &String, ver_num: i64, proc_name: &Token,
             convert_basic_token(proc_name, false).as_str().to_lowercase(),
             ver_num));
         wr.comma_fields(&arg_names);
-        wr.raw_write(")");
+        wr.raw_write(")\n");
     });
 }
 

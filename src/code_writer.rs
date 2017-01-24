@@ -151,7 +151,9 @@ impl<'a> CodeWriter<'a> {
             where F: Fn(&mut CodeWriter) {
         self.write(type_name);
         self.optional_fields(fields);
-        self.expr_block(" =>", true, cb);
+        self.raw_write(" => {\n");
+        self.indented(cb);
+        self.write_line("},");
     }
 
     pub fn namespace<S: AsRef<str>, F>(&mut self, name: S, cb: F)
