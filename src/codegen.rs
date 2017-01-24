@@ -236,8 +236,7 @@ fn write_service_proc(prog_name: &String, ver_num: i64, proc_name: &Token,
     let arg_names = (0..arg_types.len()).filter(|x| {
         match arg_types[*x] { Token::VoidDecl => { false}, _ => { true } }
     }).map(|x| { format!("arg{}", x) }).collect();
-    wr.match_option(&format!("{}RequestV{}::{}",
-        rustify(prog_name), ver_num,
+    wr.match_option(&format!("{}RequestV{}::{}", prog_name, ver_num,
         convert_basic_token(proc_name, true).as_str()), &arg_names, |wr| {
         wr.write(&format!("self.{}_v{}(",
             convert_basic_token(proc_name, false).as_str().to_lowercase(),
@@ -265,12 +264,13 @@ fn write_service_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
 
 fn write_service(prog_name: &String, versions: &Vec<Token>,
                  wr: &mut CodeWriter) -> bool {
-    wr.program_version_service(&format!("{}Service", prog_name), |wr| {
+    let rust_prog_name = rustify(prog_name);
+    wr.program_version_service(&format!("{}Service", rust_prog_name), |wr| {
         wr.alias("Request", |wr| {
-            wr.raw_write(&format!("{}Request", prog_name));
+            wr.raw_write(&format!("{}Request", rust_prog_name));
         });
         wr.alias("Response", |wr| {
-            wr.raw_write(&format!("{}Response", prog_name));
+            wr.raw_write(&format!("{}Response", rust_prog_name));
         });
         wr.alias("Error", |wr| {
             wr.raw_write("io::Error");
@@ -283,7 +283,8 @@ fn write_service(prog_name: &String, versions: &Vec<Token>,
                 for vtoken in versions {
                     if let Token::Version{ref name, ref id, ref procs} = *vtoken {
                         if let Token::Constant(id_num) = **id {
-                            write_service_version(prog_name, id_num, procs, wr);
+                            write_service_version(&rust_prog_name, id_num,
+                                                  procs, wr);
                         }
                     }
                 }
