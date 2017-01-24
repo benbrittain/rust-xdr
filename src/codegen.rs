@@ -4,7 +4,7 @@ use parser::{Token, Type};
 use code_writer::CodeWriter;
 
 // convert from snake_case to CamelCase
-pub fn rustify(underscores: &String) -> String {
+pub fn rustify(underscores: &String, is_type: bool) -> String {
     let mut collect = String::from("");
     let chars: Vec<char> = underscores.chars().collect();
     let mut under = false;
@@ -20,6 +20,8 @@ pub fn rustify(underscores: &String) -> String {
             collect.push_str(c.to_uppercase().collect::<String>().as_str());
             first = false;
             under = false;
+        } else if is_type {
+            collect.push_str(c.to_lowercase().collect::<String>().as_str());
         } else {
             collect.push_str(c.to_string().as_str());
         }
@@ -44,7 +46,7 @@ fn convert_basic_token(ident: &Token, is_type: bool) -> String {
         },
         Token::Ident(ref ty) => {
             if is_type {
-                rustify(ty)
+                rustify(ty, is_type)
             } else {
                 ty.clone()
             }
@@ -57,7 +59,7 @@ fn convert_basic_token(ident: &Token, is_type: bool) -> String {
 
 fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
     let id = match ident {
-        Token::Ident(ref id) => { rustify(id) },
+        Token::Ident(ref id) => { rustify(id, false) },
         _ => { return false }
     };
     wr.pub_struct(id, |wr| {
@@ -84,7 +86,7 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
 
 fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) -> bool {
     let id = match ident {
-        Token::Ident(ref id) => { rustify(id) },
+        Token::Ident(ref id) => { rustify(id, false) },
         _ => { return false }
     };
     wr.pub_enum(id, |wr| {
