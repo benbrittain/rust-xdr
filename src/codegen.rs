@@ -86,7 +86,7 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
 
 fn write_union(ident: Token, decl: &Box<Token>, cases: &Vec<Token>, default: &Box<Option<Token>>, wr: &mut CodeWriter) -> bool {
     let id = match ident {
-        Token::Ident(ref id) => { rustify(id) },
+        Token::Ident(ref id) => { rustify(id, true) },
         _ => { return false }
     };
     wr.pub_enum(id, |wr| {
