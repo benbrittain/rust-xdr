@@ -77,8 +77,8 @@ impl<'a> CodeWriter<'a> {
     pub fn program_version_request<S: AsRef<str>, F>(&mut self, prog_name: S,
                                                      ver_num: i64, cb: F)
             where F: Fn(&mut CodeWriter) {
-        self.expr_block(&format!("pub enum {}RequestV{}",
-                                 prog_name.as_ref(), ver_num), cb);
+        self.pub_enum(&format!("{}RequestV{}", prog_name.as_ref(), ver_num),
+            cb);
 
     }
 
@@ -96,14 +96,14 @@ impl<'a> CodeWriter<'a> {
             }
             self.raw_write(")");
         }
-        self.write_line(",");
+        self.raw_write(",\n");
     }
 
     pub fn program_version_response<S: AsRef<str>, F>(&mut self, prog_name: S,
                                                      ver_num: i64, cb: F)
             where F: Fn(&mut CodeWriter) {
-        self.expr_block(&format!("pub enum {}ResponseV{}",
-                                 prog_name.as_ref(), ver_num), cb);
+        self.pub_enum(&format!("{}ResponseV{}", prog_name.as_ref(), ver_num),
+            cb);
     }
 
     pub fn version_proc_response<S1: AsRef<str>, S2: AsRef<str>>(&mut self,
@@ -113,7 +113,7 @@ impl<'a> CodeWriter<'a> {
         if let Some(s) = ret {
             self.raw_write(&format!("({})", s.as_ref()));
         }
-        self.write_line(",");
+        self.raw_write(",\n");
     }
 
     pub fn namespace<S: AsRef<str>, F>(&mut self, name: S, cb: F)
@@ -123,6 +123,13 @@ impl<'a> CodeWriter<'a> {
 
     pub fn var_vec(&mut self, type_: &str) {
         self.write(&format!("Vec<{}>", type_));
+    }
+
+    pub fn enum_tuple_decl<F>(&mut self, name: &str, cb: F)
+        where F : Fn(&mut CodeWriter) {
+            self.write(&format!("{}(", name));
+            cb(self);
+            self.raw_write("),\n");
     }
 
     pub fn enum_struct_decl<F>(&mut self, name: &str, cb: F)

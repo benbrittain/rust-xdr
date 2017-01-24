@@ -181,7 +181,7 @@ fn write_typedef(def: Token, wr: &mut CodeWriter) -> bool {
 
 fn write_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
                  wr: &mut CodeWriter) -> bool {
-    wr.program_version_request(prog_name, ver_num, |wr| {
+    wr.pub_enum(&format!("{}RequestV{}", prog_name, ver_num), |wr| {
         for ptoken in procs {
             let (return_type, name, arg_types, id) = match *ptoken {
                 Token::Proc{
@@ -208,7 +208,7 @@ fn write_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
         }
     });
 
-    wr.program_version_response(prog_name, ver_num, |wr| {
+    wr.pub_enum(&format!("{}ResponseV{}", prog_name, ver_num), |wr| {
         for ptoken in procs {
             let (return_type, name, arg_types, id) = match *ptoken {
                 Token::Proc{
@@ -263,8 +263,30 @@ fn write_service(procs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
 }
 */
 
+fn write_version_set(prog_name: &String, versions: &Vec<Token>,
+                     set_type: &str, wr: &mut CodeWriter) -> bool {
+    wr.pub_enum(&format!("{}{}", prog_name, set_type), |wr| {
+        for vtoken in versions {
+            if let Token::Version{ref name, ref id, ref procs} = *vtoken {
+                if let Token::Constant(id_num) = **id {
+                    wr.enum_tuple_decl(&format!("V{}", id_num), |w2| {
+                        w2.raw_write(&format!("{}{}{}", prog_name, set_type,
+                                              id_num));
+                    })
+                }
+            }
+        }
+    });
+
+    true
+}
+
 fn write_program(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter) -> bool {
     let rust_prog_name = rustify(prog_name, true);
+
+    write_version_set(&rust_prog_name, versions, "Request", wr);
+    write_version_set(&rust_prog_name, versions, "Response", wr);
+
     for vtoken in versions {
         if let Token::Version{ref name, ref id, ref procs} = *vtoken {
             if let Token::Constant(id_num) = **id {
