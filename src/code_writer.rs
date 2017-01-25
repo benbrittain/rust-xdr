@@ -223,4 +223,5 @@ impl<'a> CodeWriter<'a> {
             self.indented(cb);
             self.write_line(last_line);
     }
+
 }

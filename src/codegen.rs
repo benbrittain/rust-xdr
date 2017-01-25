@@ -2,6 +2,7 @@ use std::str;
 use parser;
 use parser::{Token, Type};
 use code_writer::CodeWriter;
+use function_writer::*;
 
 // convert from snake_case to CamelCase
 pub fn rustify(underscores: &String) -> String {
@@ -341,6 +342,112 @@ fn write_program(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter)
     true
 }
 
+fn write_proc_decoder(prog_name: &String, ver_num: i64, proc_name: &Token,
+                      ret_type: &Token, arg_types: &Vec<Token>,
+                      wr: &mut CodeWriter) {
+    let proc_decoder_fn = format!("{}_decode_v{}_{}",
+        prog_name.to_lowercase(), ver_num,
+        convert_basic_token(proc_name, false).as_str().to_lowercase());
+
+    proc_decoder(&proc_decoder_fn, wr, |wr| {
+        let mut i = 0u32;
+
+        for atoken in arg_types {
+            match *atoken {
+                Token::VoidDecl => {},
+                _ => {
+                    proc_arg_decoder(i,
+                        convert_basic_token(atoken, true).as_str(), wr);
+                    i += 1;
+                }
+            }
+        }
+
+        let req_type = format!("{}RequestV{}", rustify(prog_name), ver_num);
+        let req_name = convert_basic_token(proc_name, true);
+
+        proc_decoder_finalize(&req_type, &req_name, i, wr);
+    });
+}
+
+fn write_version_decoder(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
+                         wr: &mut CodeWriter) {
+    let version_decoder_fn = format!("{}_decode_v{}",
+        prog_name.to_lowercase(), ver_num);
+    version_decoder(&version_decoder_fn, wr, |wr| {
+        version_decoder_match(wr, |wr| {
+            for ptoken in procs {
+                if let Token::Proc{ref return_type,
+                                   ref name,
+                                   ref arg_types,
+                                   ref id} = *ptoken {
+                    let proc_decoder_fn = &format!("{}_{}",
+                        &version_decoder_fn,
+                        convert_basic_token(name.as_ref(), false).to_lowercase());
+                    if let Token::Constant(id_num) = **id {
+                        wr.match_option(&format!("{}u32", id_num),
+                            &Vec::<String>::new(), |wr| {
+                            proc_decoder_call(&proc_decoder_fn, wr);
+                        });
+                    }
+               }
+            }
+            decoder_miss("procedure", wr);
+        });
+    });
+
+    for ptoken in procs {
+        if let Token::Proc{ref return_type,
+                           ref name,
+                           ref arg_types,
+                           ref id} = *ptoken {
+            write_proc_decoder(prog_name, ver_num, name, return_type,
+                               arg_types, wr);
+       }
+    }
+}
+
+fn write_decoder(prog_name: &String, prog_id: i64, versions: &Vec<Token>,
+                 wr: &mut CodeWriter) -> bool {
+    let prog_decoder_fn = format!("{}_decode", prog_name.to_lowercase());
+
+    top_decoder(wr, |wr| {
+        wr.match_block("header.program", |wr| {
+            wr.match_option(&format!("{}", prog_id), &Vec::<String>::new(), |wr| {
+                prog_decoder_call(&prog_decoder_fn, wr);
+            });
+            decoder_miss("program", wr);
+        });
+    });
+
+    prog_decoder(&prog_decoder_fn, wr, |wr| {
+        wr.match_block("version", |wr| {
+            for vtoken in versions {
+                if let Token::Version{ref name, ref id, ref procs} = *vtoken {
+                    if let Token::Constant(id_num) = **id {
+                        wr.match_option(&format!("{}u32", id_num),
+                            &Vec::<String>::new(), |wr| {
+                            version_decoder_call(&format!("{}_v{}",
+                                &prog_decoder_fn, id_num), wr);
+                        });
+                    }
+                }
+            }
+            decoder_miss("version", wr);
+        });
+    });
+
+    for vtoken in versions {
+        if let Token::Version{ref name, ref id, ref procs} = *vtoken {
+            if let Token::Constant(id_num) = **id {
+                write_version_decoder(prog_name, id_num, procs, wr);
+            }
+        }
+    }
+
+    true
+}
+
 fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
     wr.namespace(name, |wr| {
         for ptoken in progs {
@@ -348,6 +455,9 @@ fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bo
                 if let Token::Ident(ref name_str) = **name{
                     write_program(name_str, &versions, wr);
                     write_service(name_str, &versions, wr);
+                    if let Token::Constant(id_num) = **id {
+                        write_decoder(name_str, id_num, versions, wr);
+                    }
                     ()
                 }
             }

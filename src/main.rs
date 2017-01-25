@@ -15,6 +15,7 @@ use docopt::Docopt;
 mod parser;
 mod codegen;
 mod code_writer;
+mod function_writer;
 
 use code_writer::CodeWriter;
 
