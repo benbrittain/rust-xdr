@@ -186,7 +186,7 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
 
     #[inline]
     fn serialize_seq(&mut self, len: Option<usize>) -> EncoderResult<Option<usize>> {
-        self.serialize_i8((len.unwrap() as i8));
+        self.serialize_u32((len.unwrap() as u32));
         Ok(len)
     }
 

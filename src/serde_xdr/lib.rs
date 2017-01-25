@@ -26,13 +26,13 @@ pub fn to_bytes<T>(value: &T) -> EncoderResult<Vec<u8>>
     Ok(writer)
 }
 
-pub fn from_reader<T: Deserialize, R: Read>(reader: R) -> DecoderResult<T> {
+pub fn from_reader<T: Deserialize, R: Read>(reader: R) -> DecoderResult<(T, u32)> {
     let mut de = Deserializer::new(reader);
     let value = try!(Deserialize::deserialize(&mut de));
 //    try!(de.end());
-    Ok(value)
+    Ok((value, de.get_bytes_consumed()))
 }
 
-pub fn from_bytes<T: Deserialize>(v: &[u8]) -> DecoderResult<T> {
+pub fn from_bytes<T: Deserialize>(v: &[u8]) -> DecoderResult<(T, u32)> {
     from_reader(v)
 }

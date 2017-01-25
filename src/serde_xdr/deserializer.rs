@@ -16,16 +16,19 @@ macro_rules! not_implemented {
 }
 
 macro_rules! impl_num {
-    ($ty:ty, $deserialize_method:ident, $visitor_method:ident, $read_method:ident) => {
+    ($ty:ty, $deserialize_method:ident, $visitor_method:ident, $read_method:ident, $byte_size:expr) => {
         fn $deserialize_method<V>(&mut self, mut visitor: V) -> DecoderResult<V::Value>
             where V: de::Visitor, {
-            visitor.$visitor_method(self.$read_method::<BigEndian>()?)
+            let res = visitor.$visitor_method(self.$read_method::<BigEndian>()?);
+            self.bytes_consumed += $byte_size;
+            res
         }
     }
 }
 
 pub struct Deserializer<R: Read> {
     reader: R,
+    bytes_consumed: u32
 //    first: Option<u8>,
 }
 
@@ -33,25 +36,30 @@ impl<R: Read> Deserializer<R> {
     pub fn new(reader: R) -> Deserializer<R> {
         Deserializer {
             reader: reader,
+            bytes_consumed: 0u32
 //            first: None,
         }
     }
+
+   pub fn get_bytes_consumed(&self) -> u32 {
+        self.bytes_consumed
+   }
 }
 
 impl<R: Read> de::Deserializer for Deserializer<R> {
     type Error = EncoderError;
 
     // Implementing all the numbers that use the simple read_TYPE syntax
-    impl_num!(u16, deserialize_u16, visit_u16, read_u16);
-    impl_num!(u32, deserialize_u32, visit_u32, read_u32);
-    impl_num!(u64, deserialize_u64, visit_u64, read_u64);
+    impl_num!(u16, deserialize_u16, visit_u16, read_u16, 2);
+    impl_num!(u32, deserialize_u32, visit_u32, read_u32, 4);
+    impl_num!(u64, deserialize_u64, visit_u64, read_u64, 8);
 
-    impl_num!(i16, deserialize_i16, visit_i16, read_i16);
-    impl_num!(i32, deserialize_i32, visit_i32, read_i32);
-    impl_num!(i64, deserialize_i64, visit_i64, read_i64);
+    impl_num!(i16, deserialize_i16, visit_i16, read_i16, 2);
+    impl_num!(i32, deserialize_i32, visit_i32, read_i32, 4);
+    impl_num!(i64, deserialize_i64, visit_i64, read_i64, 8);
 
-    impl_num!(f32, deserialize_f32, visit_f32, read_f32);
-    impl_num!(f64, deserialize_f64, visit_f64, read_f64);
+    impl_num!(f32, deserialize_f32, visit_f32, read_f32, 4);
+    impl_num!(f64, deserialize_f64, visit_f64, read_f64, 8);
 
     not_implemented!(
         deserialize();
@@ -73,18 +81,22 @@ impl<R: Read> de::Deserializer for Deserializer<R> {
    );
 
    fn deserialize_u8<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
-       visitor.visit_u8(self.read_u8()?)
+       let res = visitor.visit_u8(self.read_u8()?);
+       self.bytes_consumed += 1;
+       res
    }
 
    fn deserialize_i8<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
-       visitor.visit_i8(self.read_i8()?)
+       let res = visitor.visit_i8(self.read_i8()?);
+       self.bytes_consumed += 1;
+       res
    }
 
    fn deserialize_struct<V>(&mut self,
                             name: &'static str,
                             fields: &'static [&'static str],
                             mut visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
-       visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(fields.len() as u8) })
+       visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(fields.len() as u32) })
    }
 
 
@@ -106,7 +118,7 @@ impl<R: Read> de::Deserializer for Deserializer<R> {
    }
 
    fn deserialize_seq_fixed_size<V: Visitor>(&mut self, _len: usize, mut visitor: V) -> DecoderResult<V::Value> {
-       visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(_len as u8)})
+       visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(_len as u32)})
    }
 }
 
@@ -118,7 +130,7 @@ impl<R: Read> Read for Deserializer<R> {
 
 struct SeqVisitor<'a, R: Read + 'a> {
     deserializer: &'a mut Deserializer<R>,
-    len: Option<u8>,
+    len: Option<u32>,
 }
 
 impl<'a, R: Read> de::SeqVisitor for SeqVisitor<'a, R> {
@@ -126,7 +138,7 @@ impl<'a, R: Read> de::SeqVisitor for SeqVisitor<'a, R> {
     fn visit<T>(&mut self) -> DecoderResult<Option<T>> where T: de::Deserialize {
         match self.len {
             None => {
-                // The size of this variable object hasn't been acquired yet, so grab the first u8
+                // The size of this variable object hasn't been acquired yet, so grab the first u32
                 self.len = Some(Deserialize::deserialize(self.deserializer)?);
             },
             Some(_) => {}
