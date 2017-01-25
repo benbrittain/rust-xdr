@@ -14,16 +14,13 @@ pub use self::error::{EncoderError, DecoderResult, EncoderResult};
 pub use self::serializer::Serializer;
 pub use self::deserializer::Deserializer;
 
-pub fn to_bytes<T>(value: &T) -> EncoderResult<Vec<u8>>
+pub fn to_bytes<T>(value: &T, buf: &mut Vec<u8>) -> EncoderResult<()>
     where T: Serialize
 {
-    let mut writer = Vec::with_capacity(128);
-    {
-        let mut ser = Serializer::new(&mut writer);
-        try!(value.serialize(&mut ser));
-    }
+    let mut ser = Serializer::new(buf);
+    try!(value.serialize(&mut ser));
 //  Ok(ser.into_inner())
-    Ok(writer)
+    Ok(())
 }
 
 pub fn from_reader<T: Deserialize, R: Read>(reader: R) -> DecoderResult<(T, u32)> {

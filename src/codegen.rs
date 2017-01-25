@@ -193,18 +193,18 @@ fn write_enum(ident: Token,
 fn write_typedef(def: Token, wr: &mut CodeWriter) -> bool {
     match def {
         Token::VarArrayDecl{ty, id, size} => {
-            wr.alias(convert_basic_token(&id, true), |wr| {
+            wr.pub_alias(convert_basic_token(&id, true), |wr| {
                 wr.var_vec(convert_basic_token(&ty, true).as_str());
             });
         },
         Token::StringDecl{id, size} => {
-            wr.alias(convert_basic_token(&id, true), |wr| {
+            wr.pub_alias(convert_basic_token(&id, true), |wr| {
                 // TODO Size this somehow. maybe make these &[u8]
                 wr.write(String::from("String"));
             });
         },
         Token::Decl{ty, id} => {
-            wr.alias(convert_basic_token(&id, true), |wr| {
+            wr.pub_alias(convert_basic_token(&id, true), |wr| {
                 wr.write(convert_basic_token(&ty, true).as_str());
             });
         },
@@ -480,6 +480,45 @@ fn write_decoder(prog_name: &String, prog_id: i64, versions: &Vec<Token>,
     true
 }
 
+fn write_version_encoder(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
+                         wr: &mut CodeWriter) {
+    encoder_version(prog_name, ver_num, wr, |wr| {
+        wr.match_block("rsp", |wr| {
+            for ptoken in procs {
+                if let Token::Proc{ref return_type,
+                                   ref name,
+                                   ref arg_types,
+                                   ref id} = *ptoken {
+                    encoder_proc(prog_name,
+                                 convert_basic_token(name, true).as_str(),
+                                 ver_num, wr);
+                }
+            }
+            decoder_miss("procedure", wr);
+        });
+    });
+}
+
+fn write_encoder(prog_name: &String, versions: &Vec<Token>,
+                 wr: &mut CodeWriter) -> bool {
+    let rust_prog_name = rustify(prog_name);
+
+    encoder(&rust_prog_name, wr, |wr| {
+        wr.match_block("msg", |wr| {
+            for vtoken in versions {
+                if let Token::Version{ref name, ref id, ref procs} = *vtoken {
+                    if let Token::Constant(id_num) = **id {
+                        write_version_encoder(&rust_prog_name, id_num, procs,
+                                              wr);
+                    }
+                }
+            }
+            decoder_miss("version", wr);
+        });
+    });
+    true
+}
+
 fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
     wr.namespace(name, |wr| {
         for ptoken in progs {
@@ -489,6 +528,7 @@ fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bo
                     write_service(name_str, &versions, wr);
                     if let Token::Constant(id_num) = **id {
                         write_decoder(name_str, id_num, versions, wr);
+                        write_encoder(name_str, versions, wr);
                     }
                     ()
                 }

@@ -128,7 +128,9 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
     fn serialize_struct_elt<T: Serialize>(&mut self, state: &mut Self::MapState,
                                           key: &'static str, value: T) -> EncoderResult<()> {
         // keep state around in case we need to do something fancy
-        state.slots.append(&mut to_bytes(&value).unwrap());
+        let mut buf = Vec::<u8>::with_capacity(128);
+        try!(to_bytes(&value, &mut buf));
+        state.slots.append(&mut buf);
         value.serialize(self)
     }
 
@@ -161,7 +163,9 @@ impl<W: io::Write> ser::Serializer for Serializer<W> {
     #[inline]
     fn serialize_struct_variant_elt<T: Serialize>(&mut self, state: &mut MapState,
                                                        key: &'static str, value: T) -> EncoderResult<()> {
-        Ok(state.slots.append(&mut to_bytes(&value).unwrap()))
+        let mut buf = Vec::<u8>::with_capacity(128);
+        try!(to_bytes(&value, &mut buf));
+        Ok(state.slots.append(&mut buf))
     }
 
 

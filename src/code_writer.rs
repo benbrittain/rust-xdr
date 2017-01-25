@@ -59,11 +59,21 @@ impl<'a> CodeWriter<'a> {
         self.write_line("");
     }
 
-    pub fn alias<S : AsRef<str>, F>(&mut self, name: S, cb: F)
+    fn alias_impl<S : AsRef<str>, F>(&mut self, prefix: &str,  name: S, cb: F)
         where F : Fn(&mut CodeWriter) {
-            self.write(&format!("pub type {} = ", name.as_ref()));
+            self.write(&format!("{}type {} = ", prefix, name.as_ref()));
             cb(self);
             self.raw_write(";\n")
+    }
+
+    pub fn alias<S : AsRef<str>, F>(&mut self, name: S, cb: F)
+            where F : Fn(&mut CodeWriter) {
+        self.alias_impl("", name, cb);
+    }
+
+    pub fn pub_alias<S : AsRef<str>, F>(&mut self, name: S, cb: F)
+            where F : Fn(&mut CodeWriter) {
+        self.alias_impl("pub ", name, cb);
     }
 
     pub fn pub_enum<S : AsRef<str>, F>(&mut self, name: S, cb: F)

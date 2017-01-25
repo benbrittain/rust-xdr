@@ -99,7 +99,7 @@ r###"let res{0} = serde_xdr::from_bytes::<{1}>(buf.to_slice());
                 }},
                 Other(s) => {{
                     return Err(io::Error::new(io::ErrorKind::Other,
-                        format!("argument {0} parse failure: {}"), s));
+                        format!("argument {0} parse failure: {{}}"), s));
                 }}
             }}
         }}
@@ -114,4 +114,28 @@ pub fn proc_decoder_finalize<S1: AsRef<str>, S2: AsRef<str>>(
     let arg_list = (0..n_args).map(|x| { format!("arg{}", x) }).collect();
     wr.comma_fields(&arg_list);
     wr.raw_write(");\n");
+}
+
+pub fn encoder<S: AsRef<str>, F>(prog_name: S, wr: &mut CodeWriter, cb: F)
+        where F : Fn(&mut CodeWriter) {
+    wr.expr_block(&format!(
+        "pub fn encode(msg: {}Response, buf: &mut Vec<u8>) -> io::Result<()>",
+        prog_name.as_ref()), false, cb);
+}
+
+pub fn encoder_version<S: AsRef<str>, F>(prog_name: S, ver_num: i64,
+                                         wr: &mut CodeWriter, cb:F)
+        where F : Fn(&mut CodeWriter) {
+    wr.match_option(&format!("{}Response::V{}", prog_name.as_ref(), ver_num),
+        &vec!["rsp"], cb);
+}
+
+pub fn encoder_proc<S1: AsRef<str>, S2: AsRef<str>>(prog_name: S1,
+                                                    proc_name: S2,
+                                                    ver_num: i64,
+                                                    wr: &mut CodeWriter) {
+    wr.match_option(&format!("{}ResponseV{}::{}", prog_name.as_ref(), ver_num,
+            proc_name.as_ref()), &vec!["r"], |wr| {
+        wr.write_line("try!(serde_xdr::to_bytes(r, buf));");
+    });
 }
