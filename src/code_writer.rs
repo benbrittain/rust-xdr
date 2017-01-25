@@ -13,6 +13,13 @@ impl<'a> CodeWriter<'a> {
         }
     }
 
+    pub fn same_line<F>(&mut self, cb: F) where F : Fn(&mut CodeWriter) {
+        cb(&mut CodeWriter {
+            writer: self.writer,
+            indent: format!(""),
+        });
+    }
+
     pub fn indented<F>(&mut self, cb: F) where F : Fn(&mut CodeWriter) {
         cb(&mut CodeWriter {
             writer: self.writer,
@@ -186,6 +193,14 @@ impl<'a> CodeWriter<'a> {
         } else {
             self.write_line(&format!("{} = {},", name, val));
         }
+    }
+
+    // TODO generalized version should replace non _fn impl
+    pub fn pub_field_decl_fn<F>(&mut self, name: &str, cb: F)
+        where F : Fn(&mut CodeWriter) {
+        self.write(&format!("pub {}: ", name));
+        self.same_line(cb);
+        self.raw_write(",\n");
     }
 
     pub fn pub_field_decl(&mut self, name: &str, field_type: &str) {

@@ -62,6 +62,7 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
     };
     wr.pub_struct(id, |wr| {
         for field in fields.iter() {
+            println!("{:?}", field);
             match *field {
                 Token::Decl{ty: ref field_type, id: ref field_id} => {
                     wr.pub_field_decl(
@@ -73,6 +74,14 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
                         // TODO Manage sized strings
                         convert_basic_token(field_id, false).as_str(), "String");
                 },
+                Token::VarArrayDecl{ref ty, ref id, ref size} => {
+                    wr.pub_field_decl_fn(convert_basic_token(&id, false).as_str(), |wr| {
+                        wr.var_vec(convert_basic_token(&ty, true).as_str());
+                    });
+                },
+                      //  wr.pub_field_decl_fn(
+                      //  wr.var_vec(convert_basic_token(&ty, true).as_str());
+                      //  ty: Ident("example_uint_t"), id: Ident("my_vector_of_ints"), size: None 
                 _ => {
                     println!("UNIMPLEMENTED STRUCT FIELD");
                 }

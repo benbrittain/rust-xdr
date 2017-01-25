@@ -7,23 +7,10 @@ use std::result;
 use error::{DecoderResult, EncoderError};
 use serde::de::value::ValueDeserializer;
 
-//impl<R: Read> Deserializer<R> {
-//    pub fn new(rdr: R) -> Deserializer<R> {
-//        Deserializer {
-//            //rdr: BufReader::new(rdr),
-//            //pos: 0,
-//            //value: None,
-//            //memo: BTreeMap::new(),
-//            //stack: Vec::with_capacity(128),
-//            //stacks: Vec::with_capacity(16),
-//        }
-//    }
-// }
-
 macro_rules! not_implemented {
     ($($name:ident($($arg:ident: $ty:ty,)*);)*) => {
         $(fn $name<V: Visitor>(&mut self, $($arg: $ty,)* visitor: V) -> DecoderResult<V::Value> {
-            Err(EncoderError::Unknown(format!("Deserialize Not Implemented for {}", stringify!($name))))
+            Err(EncoderError::Unknown(format!("XDR deserialize not implemented for {}", stringify!($name))))
         })*
     }
 }
@@ -36,7 +23,6 @@ macro_rules! impl_num {
         }
     }
 }
-
 
 pub struct Deserializer<R: Read> {
     reader: R,
@@ -77,7 +63,6 @@ impl<R: Read> de::Deserializer for Deserializer<R> {
         deserialize_string();
         deserialize_unit();
         deserialize_option();
-        deserialize_seq_fixed_size(_len: usize,);
         deserialize_bytes();
         deserialize_map();
         deserialize_unit_struct(_name: &'static str,);
@@ -117,9 +102,12 @@ impl<R: Read> de::Deserializer for Deserializer<R> {
    }
 
    fn deserialize_seq<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
-       visitor.visit_seq(SeqVisitor { deserializer: self, len: None })
+       visitor.visit_seq(SeqVisitor { deserializer: self, len: None})
    }
 
+   fn deserialize_seq_fixed_size<V: Visitor>(&mut self, _len: usize, mut visitor: V) -> DecoderResult<V::Value> {
+       visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(_len as u8)})
+   }
 }
 
 impl<R: Read> Read for Deserializer<R> {
