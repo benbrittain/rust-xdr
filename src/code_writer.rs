@@ -148,7 +148,7 @@ impl<'a> CodeWriter<'a> {
 
     pub fn match_block<S: AsRef<str>, F>(&mut self, s: S, cb: F)
             where F: Fn(&mut CodeWriter) {
-        self.expr_block(&format!("match {} =>", s.as_ref()), false, cb);
+        self.expr_block(&format!("match {} ", s.as_ref()), false, cb);
     }
 
     pub fn match_option<S1: AsRef<str>, S2: AsRef<str>, F>(&mut self,
