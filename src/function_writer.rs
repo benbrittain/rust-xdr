@@ -57,6 +57,12 @@ pub fn version_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
     wr.write_line(&format!("{}(proc, buf);", fn_name.as_ref()));
 }
 
+pub fn version_decoder_finalize<S: AsRef<str>>(prog_name: S, ver_num: i64,
+                                               wr: &mut CodeWriter) {
+    wr.write_line(&format!("Ok(Some({}Request::V{}(request));",
+        prog_name.as_ref(), ver_num));
+}
+
 pub fn proc_decoder<S: AsRef<str>, F>(fn_name: S, wr: &mut CodeWriter, cb: F)
         where F : Fn(&mut CodeWriter) {
     wr.expr_block(&format!(
