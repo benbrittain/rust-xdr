@@ -28,13 +28,15 @@ fn main() {
     let x: Locid = 5774;
 
 
-    let bytes = serde_xdr::to_bytes(&test).unwrap();
+    let mut bytes = Vec::<u8>::new();
+    serde_xdr::to_bytes(&test, &mut bytes);
     println!("{:?}", bytes);
     let obj = serde_xdr::from_bytes::<LocationCluster>(&bytes);
     println!("{:?}", obj);
 
-    let bytes = serde_xdr::to_bytes(&locid_list).unwrap();
-    println!("{:?}", bytes);
-    let obj = serde_xdr::from_bytes::<LocationClusterVec>(&bytes);
+    let mut bytes2 = Vec::<u8>::new();
+    serde_xdr::to_bytes(&locid_list, &mut bytes2);
+    println!("{:?}", bytes2);
+    let obj = serde_xdr::from_bytes::<LocationClusterVec>(&bytes2);
     println!("{:?}", obj);
 }

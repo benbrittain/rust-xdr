@@ -3,12 +3,12 @@ use code_writer::CodeWriter;
 pub fn top_decoder<S: AsRef<str>, F>(prog_name: S, wr: &mut CodeWriter, cb: F)
             where F : Fn(&mut CodeWriter) {
     wr.expr_block(
-            &format!("fn decode(buf: &[u8]) -> io::Result<Option<{}Request>>",
+            &format!("pub fn decode(buf: &mut EasyBuf) -> io::Result<Option<{}Request>>",
             prog_name.as_ref()), false, |wr| {
         wr.write(
-r###"let header_res = serde_xdr::from_bytes::<XdrRpcHeader>(buf.to_slice());
+r###"let header_res = serde_xdr::from_bytes::<XdrRpcHeader>(buf.as_slice());
     let header = match header_res {
-        Ok(h, consumed) => {
+        Ok((h, consumed)) => {
             buf.drain_to(consumed);
             h
         },
@@ -18,8 +18,8 @@ r###"let header_res = serde_xdr::from_bytes::<XdrRpcHeader>(buf.to_slice());
                     return Err(i);
                 },
                 serde_xdr::EncoderError::Unknown(s) => {
-                    return io::Error::new(io::ErrorKind::Other,
-                        format!("failed to read header: {}", s));
+                    return Err(io::Error::new(io::ErrorKind::Other,
+                        format!("failed to read header: {}", s)));
                 }
             }
         }
@@ -28,7 +28,7 @@ r###"let header_res = serde_xdr::from_bytes::<XdrRpcHeader>(buf.to_slice());
     match header.rpc_vers {
         2u32 => {},
         _ => {
-            return io::Error:new(io::ErrorKind::Other, "unknown RPC version");
+            return Err(io::Error::new(io::ErrorKind::Other, "unknown RPC version"));
         }
     }
 "###);
@@ -40,7 +40,7 @@ r###"let header_res = serde_xdr::from_bytes::<XdrRpcHeader>(buf.to_slice());
 pub fn decoder_miss<S: AsRef<str>>(s: S, wr: &mut CodeWriter) {
     wr.match_option("_", &Vec::<String>::new(), |wr| {
         wr.write_line(&format!(
-            "io::Error::new(io::ErrorKind::Other, \"unknown {}\");",
+            "return Err(io::Error::new(io::ErrorKind::Other, \"unknown {}\"));",
             s.as_ref()));
     });
 }
@@ -51,13 +51,13 @@ pub fn prog_decoder<S1: AsRef<str>, S2: AsRef<str>, F>(prog_name:S1,
                                                        cb: F)
         where F : Fn(&mut CodeWriter) {
     wr.expr_block(&format!(
-r###"pub fn {}(version: u32, procedure: u32, buf: &[u8]) ->
+r###"pub fn {}(version: u32, procedure: u32, buf: &mut EasyBuf) ->
     io::Result<Option<{}Request>>"###, fn_name.as_ref(), prog_name.as_ref()),
     false, cb);
 }
 
 pub fn prog_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
-    wr.write_line(&format!("{}(header.version, header.procedure, buf);",
+    wr.write_line(&format!("{}(header.version, header.procedure, buf)",
         fn_name.as_ref()));
 }
 
@@ -73,13 +73,12 @@ pub fn version_decoder<S1: AsRef<str>, S2: AsRef<str>, F>(prog_name: S1,
                                                           cb: F)
         where F : Fn(&mut CodeWriter) {
     wr.expr_block(&format!(
-r###"pub fn {}(procedure: u32, buf: &[u8]) ->
-    io::Result<Option<{}Request>>"###, fn_name.as_ref(), prog_name.as_ref()),
-        false, cb);
+r###"pub fn {}(procedure: u32, buf: &mut EasyBuf) ->
+    io::Result<Option<{}Request>>"###, fn_name.as_ref(), prog_name.as_ref()), false, cb);
 }
 
 pub fn version_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
-    wr.write_line(&format!("{}(procedure, buf);", fn_name.as_ref()));
+    wr.write_line(&format!("{}(procedure, buf)", fn_name.as_ref()));
 }
 
 pub fn version_decoder_finalize<S: AsRef<str>>(prog_name: S, ver_num: i64,
@@ -90,24 +89,25 @@ pub fn version_decoder_finalize<S: AsRef<str>>(prog_name: S, ver_num: i64,
 
 pub fn proc_decoder<S1: AsRef<str>, S2: AsRef<str>, F>(prog_name: S1,
                                                        fn_name: S2,
+                                                       ver_num: i64,
                                                        wr: &mut CodeWriter,
                                                        cb: F)
         where F : Fn(&mut CodeWriter) {
     wr.expr_block(
-        &format!("pub fn {}(buf: &[u8]) -> io::Result<Option<{}Request>>",
-        fn_name.as_ref(), prog_name.as_ref()), false, cb);
+        &format!("pub fn {}(buf: &mut EasyBuf) -> io::Result<Option<{}Request{}>>",
+        fn_name.as_ref(), prog_name.as_ref(), ver_num), false, cb);
 }
 
 pub fn proc_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
-    wr.write_line(&format!("{}(buf);", fn_name.as_ref()));
+    wr.write_line(&format!("{}(buf)", fn_name.as_ref()));
 }
 
 pub fn proc_arg_decoder<S: AsRef<str>>(arg_index: u32, arg_type: S,
                                        wr: &mut CodeWriter) {
     wr.write_line(&format!(
-r###"let res{0} = serde_xdr::from_bytes::<{1}>(buf.to_slice());
+r###"let res{0} = serde_xdr::from_bytes::<{1}>(buf.as_slice());
     let arg{0} = match res{0} {{
-        Some(arg, consumed) => {{
+        Ok((arg, consumed)) => {{
             buf.drain_to(consumed);
             arg
         }},
@@ -118,7 +118,7 @@ r###"let res{0} = serde_xdr::from_bytes::<{1}>(buf.to_slice());
                 }},
                 serde_xdr::EncoderError::Unknown(s) => {{
                     return Err(io::Error::new(io::ErrorKind::Other,
-                        format!("argument {0} parse failure: {{}}"), s));
+                        format!("argument {0} parse failure: {{}}", s)));
                 }}
             }}
         }}
@@ -128,11 +128,11 @@ r###"let res{0} = serde_xdr::from_bytes::<{1}>(buf.to_slice());
 
 pub fn proc_decoder_finalize<S1: AsRef<str>, S2: AsRef<str>>(
         req_type: S1, req_name: S2, n_args: u32, wr: &mut CodeWriter) {
-    wr.write(&format!("{}::{}(", req_type.as_ref(), req_name.as_ref()));
+    wr.write(&format!("Ok(Some({}::{}", req_type.as_ref(), req_name.as_ref()));
 
     let arg_list = (0..n_args).map(|x| { format!("arg{}", x) }).collect();
-    wr.comma_fields(&arg_list);
-    wr.raw_write(");\n");
+    wr.optional_fields(&arg_list);
+    wr.raw_write("))\n");
 }
 
 pub fn encoder<S: AsRef<str>, F>(prog_name: S, wr: &mut CodeWriter, cb: F)

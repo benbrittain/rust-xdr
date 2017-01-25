@@ -289,7 +289,9 @@ fn write_service_proc(prog_name: &String, ver_num: i64, proc_name: &Token,
 fn write_service_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
                          wr: &mut CodeWriter) {
     let version_fields = vec!["data"];
-    wr.match_option(&format!("V{}", ver_num), &version_fields, |wr| {
+    wr.match_option(
+            &format!("{}Request::V{}", rustify(prog_name).as_str(), ver_num),
+            &version_fields, |wr| {
         wr.match_block("data", |wr| {
             for ptoken in procs {
                 if let Token::Proc{ref return_type, ref name, ref arg_types,
@@ -297,6 +299,7 @@ fn write_service_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
                     write_service_proc(prog_name, ver_num, (*name).as_ref(),
                         arg_types, wr);
                 }
+                decoder_miss("procedure", wr);
             }
         });
     });
@@ -328,6 +331,7 @@ fn write_service(prog_name: &String, versions: &Vec<Token>,
                         }
                     }
                 }
+                decoder_miss("version", wr);
             });
         });
     });
@@ -379,7 +383,7 @@ fn write_proc_decoder(prog_name: &String, ver_num: i64, proc_name: &Token,
         prog_name.to_lowercase(), ver_num,
         convert_basic_token(proc_name, false).as_str().to_lowercase());
 
-    proc_decoder(rustify(prog_name).as_str(), &proc_decoder_fn, wr, |wr| {
+    proc_decoder(rustify(prog_name).as_str(), &proc_decoder_fn, ver_num, wr, |wr| {
         let mut i = 0u32;
 
         for atoken in arg_types {
@@ -496,6 +500,7 @@ fn write_version_encoder(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
             }
             decoder_miss("procedure", wr);
         });
+        wr.write_line("Ok(())");
     });
 }
 

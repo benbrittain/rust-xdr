@@ -59,6 +59,7 @@ impl<'a> CodeWriter<'a> {
         self.write_line("use std::io;");
         self.write_line("use serde_xdr;");
         self.write_line("use xdr_rpc::*;");
+        self.write_line("use tokio_code::io::EasyBuf;");
         self.write_line("");
     }
 

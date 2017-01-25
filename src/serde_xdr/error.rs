@@ -14,6 +14,19 @@ impl From<io::Error> for EncoderError {
     }
 }
 
+impl Into<io::Error> for EncoderError {
+    fn into(self) -> io::Error {
+        match self {
+            EncoderError::Io(e) => {
+                e
+            },
+            EncoderError::Unknown(e) => {
+                io::Error::new(io::ErrorKind::Other, e)
+            }
+        }
+    }
+}
+
 impl fmt::Display for EncoderError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
