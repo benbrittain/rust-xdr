@@ -15,9 +15,9 @@ impl From<io::Error> for EncoderError {
     }
 }
 
-impl Into<io::Error> for EncoderError {
-    fn into(self) -> io::Error {
-        match self {
+impl From<EncoderError> for io::Error {
+    fn from(err: EncoderError) -> io::Error {
+        match err {
             EncoderError::Io(e) => {
                 e
             },
