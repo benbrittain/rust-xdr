@@ -20,7 +20,7 @@ impl<'a> CodeWriter<'a> {
         });
     }
 
-    pub fn indented<F>(&mut self, cb: F) where F : Fn(&mut CodeWriter) {
+    pub fn indented<F>(&mut self, mut cb: F) where F : FnMut(&mut CodeWriter) {
         cb(&mut CodeWriter {
             writer: self.writer,
             indent: format!("{}  ", self.indent),
@@ -67,7 +67,7 @@ impl<'a> CodeWriter<'a> {
     }
 
     pub fn pub_enum<S : AsRef<str>, F>(&mut self, name: S, cb: F)
-        where F : Fn(&mut CodeWriter) {
+        where F : FnMut(&mut CodeWriter) {
             self.write_line("");
             self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
             self.expr_block(&format!("pub enum {}", name.as_ref()), false, cb);
@@ -180,7 +180,7 @@ impl<'a> CodeWriter<'a> {
     }
 
     pub fn enum_struct_decl<F>(&mut self, name: &str, cb: F)
-        where F : Fn(&mut CodeWriter) {
+        where F : FnMut(&mut CodeWriter) {
             self.write_line(&format!("{} {{", name));
             self.indented(cb);
             self.write_line("},");
@@ -207,18 +207,22 @@ impl<'a> CodeWriter<'a> {
         self.write_line(&format!("pub {}: {},", name, field_type));
     }
 
+    pub fn enc_annotation(&mut self, name: &str) {
+        self.write_line(&format!("#[serde(rename(serialize = \"{}\"))]", name));
+    }
+
     pub fn field_decl(&mut self, name: &str, field_type: &str) {
         self.write_line(&format!("{}: {},", name, field_type));
     }
 
     pub fn expr_block<F>(&mut self, prefix: &str, comma: bool, cb: F)
-        where F : Fn(&mut CodeWriter) {
+        where F : FnMut(&mut CodeWriter) {
             self.block(&format!("{} {{", prefix), if comma { "},"} else { "}" },
                 cb);
     }
 
     pub fn block<F>(&mut self, first_line: &str, last_line: &str, cb: F)
-        where F : Fn(&mut CodeWriter) {
+        where F : FnMut(&mut CodeWriter) {
             self.write_line(first_line);
             self.indented(cb);
             self.write_line(last_line);

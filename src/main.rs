@@ -3,14 +3,13 @@
 #[macro_use]
 extern crate nom;
 extern crate rustc_serialize;
-extern crate docopt;
 extern crate serde;
 extern crate serde_xdr;
 
+use std::env;
 use std::fs::File;
 use std::str;
-use std::io::{Write, Read};
-use docopt::Docopt;
+use std::io::{self, Write, Read};
 
 mod parser;
 mod codegen;
@@ -29,24 +28,21 @@ Options:
   -h --help     Show this screen.
 ";
 
-#[derive(Debug, RustcDecodable)]
-struct Args {
-    arg_input: String,
-    arg_output: String
-}
-
 fn main() {
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
-    let mut fin = File::open(args.arg_input).expect("input file does not exist.");
+    let args: Vec<_> = env::args().collect();
+
     let mut source = String::new();
-    let _ = fin.read_to_string(&mut source);
+    for file in args {
+        let mut fin = File::open(file).expect("input file does not exist.");
+        let _ = fin.read_to_string(&mut source);
+    }
     let mut buffer= Vec::new();
     {
         let mut wr = CodeWriter::new(&mut buffer);
         codegen::compile(&mut wr, source).expect("XDR->Rust codegen failed");
     }
-    let mut fout = File::create(args.arg_output).expect("error creating the module.");
-    let _ = fout.write(buffer.as_ref());
+
+    io::stdout().write(buffer.as_ref());
+    //let mut fout = File::create(args.arg_output).expect("error creating the module.");
+    //let _ = fout.write(buffer.as_ref());
 }

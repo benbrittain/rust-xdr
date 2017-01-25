@@ -3,6 +3,7 @@ use parser;
 use parser::{Token, Type};
 use code_writer::CodeWriter;
 use function_writer::*;
+use std::collections::HashMap;
 
 // convert from snake_case to CamelCase
 pub fn rustify(underscores: &String) -> String {
@@ -63,7 +64,6 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
     };
     wr.pub_struct(id, |wr| {
         for field in fields.iter() {
-            println!("{:?}", field);
             match *field {
                 Token::Decl{ty: ref field_type, id: ref field_id} => {
                     wr.pub_field_decl(
@@ -92,16 +92,39 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
     true
 }
 
-fn write_union(ident: Token, decl: &Box<Token>, cases: &Vec<Token>, default: &Box<Option<Token>>, wr: &mut CodeWriter) -> bool {
+fn write_union(ident: Token,
+               ns_decl: &Box<Token>,
+               cases: &Vec<Token>,
+               default: &Box<Option<Token>>,
+               tab: &mut SymbolTable,
+               wr: &mut CodeWriter) -> bool {
+
     let id = match ident {
         Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
+    let ns = match **ns_decl {
+        Token::Decl{ref ty, ref id} => {
+            ty
+        }
+        _=> { unreachable!()}
+    };
+
     wr.pub_enum(id, |wr| {
         for arm in cases.iter() {
             match *arm {
                 Token::UnionCase{ref vals, ref decl} => {
                     for case in vals.iter() {
+                        match **decl {
+                            Token::Decl{ref ty, ref id} => {
+                                let token =  tab.add_symbol(ns, &case, id);
+                                if let Some(t) = token {
+                                    wr.enc_annotation(convert_basic_token(t, false).as_str());
+                                }
+                            },
+                            _ => {}
+                        };
+
                         wr.enum_struct_decl(convert_basic_token(case, true).as_str(), |wr| {
                             match **decl {
                                 Token::Decl{ref ty, ref id} => {
@@ -138,7 +161,11 @@ fn write_union(ident: Token, decl: &Box<Token>, cases: &Vec<Token>, default: &Bo
     true
 }
 
-fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) -> bool {
+fn write_enum(ident: Token,
+              fields: Vec<(Token, Token)>,
+              tab: &mut SymbolTable,
+              wr: &mut CodeWriter) -> bool {
+
     let id = match ident {
         Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
@@ -147,9 +174,12 @@ fn write_enum(ident: Token, fields: Vec<(Token, Token)>, wr: &mut CodeWriter) ->
         for &(ref field_id, ref field_val) in fields.iter() {
             match *field_val {
                 Token::Blank => {
+                    // Nothing to lookup here
                     wr.enum_decl(convert_basic_token(field_id, false).as_str(), "");
                 }
                 _ => {
+                    //println!("enum:  {:?} {:?} {:?}", ident, field_id, field_val);
+                    tab.add_symbol(&ident, field_id, field_val);
                     wr.enum_decl(
                         convert_basic_token(field_id, true).as_str(),
                         convert_basic_token(field_val, false).as_str());
@@ -469,14 +499,45 @@ fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bo
     true
 }
 
+#[derive(Debug)]
+struct SymbolTable<'a> {
+    //table: HashMap<&'a str, User<'a>>,
+    name: &'a str,
+    table: HashMap<(Token, Token), Token>,
+}
+
+impl<'a> SymbolTable<'a> {
+    fn new(name: &str) -> SymbolTable {
+        let table = HashMap::new();
+        SymbolTable {
+            name: name,
+            table: table,
+        }
+    }
+    fn add_symbol(&mut self, ns_tkn: &Token, id_tkn: &Token, val: &Token) -> Option<&Token> {
+        let key = (ns_tkn.clone(), id_tkn.clone());
+        if self.table.contains_key(&key) {
+            // Don't overwrite symbol, right?
+            //println!("Table already contains the token");
+            self.table.get(&key)
+        } else {
+            self.table.insert(key, val.clone());
+            None
+        }
+    }
+}
+
 pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> {
     let bytes = source.into_bytes();
     let not_yet_parsed = bytes.as_slice();
     let tokens = parser::parse(not_yet_parsed, false);
 
+    let mut tab = SymbolTable::new("CodegenTable");
+
     wr.write_header();
 
     for token in tokens.unwrap() {
+    //    println!("{:?}", token);
         match token {
             // These three tokens are useless to us, just ignore them
             Token::Blank => {},
@@ -487,7 +548,7 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
             Token::UnionDef{id, decl} => {
                 match *decl {
                     Token::Union{decl: ref decl, ref cases, ref default} => {
-                        write_union(*id, decl, cases, default, wr);
+                        write_union(*id, decl, cases, default, &mut tab, wr);
                     },
                     _ => { println!("Unparsable") }
                 };
@@ -503,7 +564,7 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
             Token::EnumDef{id, decl} => {
                 match *decl {
                     Token::Enum(fields) => {
-                        write_enum(*id, fields, wr);
+                        write_enum(*id, fields, &mut tab, wr);
                     },
                     _ => { println!("Unparsable") }
                 };

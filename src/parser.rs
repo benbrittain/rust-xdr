@@ -1,7 +1,7 @@
 use nom::{multispace, oct_digit, digit, hex_digit};
 use std::str;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     Bool,
     Int,
@@ -13,7 +13,7 @@ pub enum Type {
     Quadruple,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Token {
     Constant(i64),
     Type(Type),
