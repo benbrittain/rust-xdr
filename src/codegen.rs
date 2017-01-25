@@ -415,7 +415,7 @@ fn write_decoder(prog_name: &String, prog_id: i64, versions: &Vec<Token>,
 
     top_decoder(wr, |wr| {
         wr.match_block("header.program", |wr| {
-            wr.match_option(&format!("{}", prog_id), &Vec::<String>::new(), |wr| {
+            wr.match_option(&format!("{}u32", prog_id), &Vec::<String>::new(), |wr| {
                 prog_decoder_call(&prog_decoder_fn, wr);
             });
             decoder_miss("program", wr);

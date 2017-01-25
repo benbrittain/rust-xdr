@@ -3,8 +3,7 @@ use code_writer::CodeWriter;
 pub fn top_decoder<F>(wr: &mut CodeWriter, cb: F)
             where F : Fn(&mut CodeWriter) {
     wr.expr_block(
-r###"fn decode(version: u32, proc: u32, buf: &mut EasyBuf) ->
-    Self::Future"###, false, |wr| {
+        "fn decode(buf: &mut EasyBuf) -> io::Result<Option<Self::In>>", false, |wr| {
         wr.write(
 r###"let header_res = serde_xdr::from_bytes<XdrRpcHeader>(buf.to_slice());
     let header = match header_res {
@@ -85,7 +84,7 @@ r###"let res{0} = serde_xdr::from_bytes<{1}>(buf.to_slice());
         }},
         None => {{
             return Err(io::Error::new(io::ErrorKind::Other,
-                "argument parse failure"));
+                "argument {0} parse failure"));
         }}
     }}
 "###, arg_index, arg_type.as_ref()));
