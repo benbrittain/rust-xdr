@@ -19,29 +19,28 @@ macro_rules! impl_num {
     ($ty:ty, $deserialize_method:ident, $visitor_method:ident, $read_method:ident, $byte_size:expr) => {
         fn $deserialize_method<V>(&mut self, mut visitor: V) -> DecoderResult<V::Value>
             where V: de::Visitor, {
-            let res = visitor.$visitor_method(self.$read_method::<BigEndian>()?);
-            self.bytes_consumed += $byte_size;
-            res
+                println!("HERE IN {}", stringify!($ty));
+                let res = visitor.$visitor_method(self.$read_method::<BigEndian>()?);
+                self.bytes_consumed += $byte_size;
+                res
         }
     }
 }
 
 pub struct Deserializer<R: Read> {
     reader: R,
-    bytes_consumed: usize
-//    first: Option<u8>,
+    bytes_consumed: u32
 }
 
 impl<R: Read> Deserializer<R> {
     pub fn new(reader: R) -> Deserializer<R> {
         Deserializer {
             reader: reader,
-            bytes_consumed: 0,
-//            first: None,
+            bytes_consumed: 0u32
         }
     }
 
-   pub fn get_bytes_consumed(&self) -> usize {
+   pub fn get_bytes_consumed(&self) -> u32 {
         self.bytes_consumed
    }
 }
@@ -62,8 +61,6 @@ impl<R: Read> de::Deserializer for Deserializer<R> {
     impl_num!(f64, deserialize_f64, visit_f64, read_f64, 8);
 
     not_implemented!(
-        deserialize();
-        deserialize_bool();
         deserialize_isize();
         deserialize_usize();
         deserialize_char();
@@ -78,48 +75,72 @@ impl<R: Read> de::Deserializer for Deserializer<R> {
         deserialize_tuple(_len: usize,);
         deserialize_struct_field();
         deserialize_ignored_any();
-   );
+        );
 
-   fn deserialize_u8<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
-       let res = visitor.visit_u8(self.read_u8()?);
-       self.bytes_consumed += 1;
-       res
-   }
+    fn deserialize<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
+        //let mut buf = [0, 0, 0, 0];
+        //self.reader.read(&mut buf);
+//       let idx: u32 = Deserialize::deserialize(self)?;
+ //       let idx: u8 = try!(Deserialize::deserialize(self));
+ //       println!("{}", idx);
 
-   fn deserialize_i8<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
-       let res = visitor.visit_i8(self.read_i8()?);
-       self.bytes_consumed += 1;
-       res
-   }
+        Err(EncoderError::Unknown(String::from("not done implementing")))
+    }
 
-   fn deserialize_struct<V>(&mut self,
-                            name: &'static str,
-                            fields: &'static [&'static str],
-                            mut visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
-       visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(fields.len() as u32) })
-   }
+    fn deserialize_bool<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
+        let value: u8 = try!(Deserialize::deserialize(self));
+        match value {
+            1 => visitor.visit_bool(true),
+            0 => visitor.visit_bool(false),
+            _ => { Err(EncoderError::Unknown(String::from("invalid u8 when decoding bool, 0 or 1 needed"))) }
+        }
+    }
+
+    fn deserialize_u8<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
+        let res = visitor.visit_u8(self.read_u8()?);
+        self.bytes_consumed += 1;
+        res
+    }
+
+    fn deserialize_i8<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
+        let res = visitor.visit_i8(self.read_i8()?);
+        self.bytes_consumed += 1;
+        res
+    }
+
+    fn deserialize_struct<V>(&mut self,
+                             name: &'static str,
+                             fields: &'static [&'static str],
+                             mut visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
+        visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(fields.len() as u32) })
+    }
 
 
-   fn deserialize_newtype_struct<V>(&mut self,
-                                    name: &'static str,
-                                    mut visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
-       visitor.visit_newtype_struct(self)
-   }
+    fn deserialize_newtype_struct<V>(&mut self,
+                                     name: &'static str,
+                                     mut visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
+        visitor.visit_newtype_struct(self)
+    }
 
-   fn deserialize_enum<V: EnumVisitor>(&mut self,
-                                       _enum: &'static str,
-                                       _variants: &'static [&'static str],
-                                       mut visitor: V) -> DecoderResult<V::Value> {
-       visitor.visit(self)
-   }
+    fn deserialize_enum<V: EnumVisitor>(&mut self,
+                                        _enum: &'static str,
+                                        _variants: &'static [&'static str],
+                                        mut visitor: V) -> DecoderResult<V::Value> {
+        //println!("{:?}", _enum);
+        //if _enum == "UNION_" {
 
-   fn deserialize_seq<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
-       visitor.visit_seq(SeqVisitor { deserializer: self, len: None})
-   }
+        //} else {
+            visitor.visit(self)
+        //}
+    }
 
-   fn deserialize_seq_fixed_size<V: Visitor>(&mut self, _len: usize, mut visitor: V) -> DecoderResult<V::Value> {
-       visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(_len as u32)})
-   }
+    fn deserialize_seq<V: Visitor>(&mut self, mut visitor: V) -> DecoderResult<V::Value> {
+        visitor.visit_seq(SeqVisitor { deserializer: self, len: None})
+    }
+
+    fn deserialize_seq_fixed_size<V: Visitor>(&mut self, _len: usize, mut visitor: V) -> DecoderResult<V::Value> {
+        visitor.visit_seq(SeqVisitor { deserializer: self, len: Some(_len as u32)})
+    }
 }
 
 impl<R: Read> Read for Deserializer<R> {
@@ -181,15 +202,18 @@ impl<R: Read> de::VariantVisitor for Deserializer<R> {
     }
 
     fn visit_newtype<T>(&mut self) -> DecoderResult<T> where T: de::Deserialize {
+        println!("HEEEY 3");
         de::Deserialize::deserialize(self)
     }
 
     fn visit_tuple<V>(&mut self, _len: usize, visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
+        println!("HEEEY 2");
         de::Deserializer::deserialize(self, visitor)
     }
 
     fn visit_struct<V>(&mut self, _fields: &'static [&'static str], visitor: V)
                                             -> DecoderResult<V::Value> where V: de::Visitor {
+        println!("HEEEY 1");
         //TODO might need fancier stuff here
         de::Deserializer::deserialize(self, visitor)
     }

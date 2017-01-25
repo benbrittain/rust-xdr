@@ -115,16 +115,10 @@ fn write_union(ident: Token,
             match *arm {
                 Token::UnionCase{ref vals, ref decl} => {
                     for case in vals.iter() {
-                        match **decl {
-                            Token::Decl{ref ty, ref id} => {
-                                let token =  tab.add_symbol(ns, &case, id);
-                                if let Some(t) = token {
-                                    wr.enc_annotation(convert_basic_token(t, false).as_str());
-                                }
-                            },
-                            _ => {}
-                        };
-
+                        let token =  tab.get_symbol(ns, &case);
+                        if let Some(t) = token {
+                            wr.enc_annotation(convert_basic_token(t, false).as_str());
+                        }
                         wr.enum_struct_decl(convert_basic_token(case, true).as_str(), |wr| {
                             match **decl {
                                 Token::Decl{ref ty, ref id} => {
@@ -132,7 +126,7 @@ fn write_union(ident: Token,
                                         convert_basic_token(id, false).as_str(),
                                         convert_basic_token(ty, true).as_str());
                                 },
-                                _ => {}
+                                _ => { /* void decl probably */ }
                             };
                         });
                     }
@@ -569,6 +563,11 @@ impl<'a> SymbolTable<'a> {
             self.table.insert(key, val.clone());
             None
         }
+    }
+
+    fn get_symbol(&mut self, ns_tkn: &Token, id_tkn: &Token) -> Option<&Token> {
+        let key = (ns_tkn.clone(), id_tkn.clone());
+        self.table.get(&key)
     }
 }
 

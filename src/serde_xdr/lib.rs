@@ -26,7 +26,6 @@ pub fn to_bytes<T>(value: &T, buf: &mut Vec<u8>) -> EncoderResult<()>
 pub fn from_reader<T: Deserialize, R: Read>(reader: R) -> DecoderResult<(T, usize)> {
     let mut de = Deserializer::new(reader);
     let value = try!(Deserialize::deserialize(&mut de));
-//    try!(de.end());
     Ok((value, de.get_bytes_consumed()))
 }
 
