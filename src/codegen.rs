@@ -379,7 +379,7 @@ fn write_proc_decoder(prog_name: &String, ver_num: i64, proc_name: &Token,
         prog_name.to_lowercase(), ver_num,
         convert_basic_token(proc_name, false).as_str().to_lowercase());
 
-    proc_decoder(&proc_decoder_fn, wr, |wr| {
+    proc_decoder(rustify(prog_name).as_str(), &proc_decoder_fn, wr, |wr| {
         let mut i = 0u32;
 
         for atoken in arg_types {
@@ -404,7 +404,7 @@ fn write_version_decoder(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
                          wr: &mut CodeWriter) {
     let version_decoder_fn = format!("{}_decode_v{}",
         prog_name.to_lowercase(), ver_num);
-    version_decoder(&version_decoder_fn, wr, |wr| {
+    version_decoder(rustify(prog_name).as_str(), &version_decoder_fn, wr, |wr| {
         version_decoder_match(wr, |wr| {
             for ptoken in procs {
                 if let Token::Proc{ref return_type,
@@ -443,7 +443,7 @@ fn write_decoder(prog_name: &String, prog_id: i64, versions: &Vec<Token>,
                  wr: &mut CodeWriter) -> bool {
     let prog_decoder_fn = format!("{}_decode", prog_name.to_lowercase());
 
-    top_decoder(wr, |wr| {
+    top_decoder(rustify(prog_name).as_str(), wr, |wr| {
         wr.match_block("header.program", |wr| {
             wr.match_option(&format!("{}u32", prog_id), &Vec::<String>::new(), |wr| {
                 prog_decoder_call(&prog_decoder_fn, wr);
@@ -452,7 +452,7 @@ fn write_decoder(prog_name: &String, prog_id: i64, versions: &Vec<Token>,
         });
     });
 
-    prog_decoder(&prog_decoder_fn, wr, |wr| {
+    prog_decoder(rustify(prog_name).as_str(), &prog_decoder_fn, wr, |wr| {
         wr.match_block("version", |wr| {
             for vtoken in versions {
                 if let Token::Version{ref name, ref id, ref procs} = *vtoken {
