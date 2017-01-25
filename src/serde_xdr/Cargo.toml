@@ -6,3 +6,10 @@ authors = ["Ben Brittain <ben@brittain.org>"]
 [lib]
 name = "serde_xdr"
 path = "lib.rs"
+
+[dependencies]
+nom = "^2.0"
+rustc-serialize = "0.3"
+serde = "*"
+serde_derive = "0.8"
+byteorder = "*"
