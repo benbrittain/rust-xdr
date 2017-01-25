@@ -393,8 +393,9 @@ fn write_version_decoder(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
                }
             }
             decoder_miss("procedure", wr);
-            version_decoder_finalize(rustify(prog_name), ver_num, wr);
         });
+
+        version_decoder_finalize(rustify(prog_name), ver_num, wr);
     });
 
     for ptoken in procs {

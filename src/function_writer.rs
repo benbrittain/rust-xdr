@@ -7,14 +7,14 @@ r###"fn decode(version: u32, proc: u32, buf: &mut EasyBuf) ->
     Self::Future"###, false, |wr| {
         wr.write(
 r###"let header_res = serde_xdr::from_bytes<XdrRpcHeader>(buf.to_slice());
-let header = match header_res {
-    Some(h, consumed) => {
-        buf.drain_to(consumed);
-        h
-    }, _ => {
-        return io::Error::new(io::ErrorKind::Other, "failed to read header")
+    let header = match header_res {
+        Some(h, consumed) => {
+            buf.drain_to(consumed);
+            h
+        }, _ => {
+            return io::Error::new(io::ErrorKind::Other, "failed to read header")
+        }
     }
-}
 "###);
 
         cb(wr);
