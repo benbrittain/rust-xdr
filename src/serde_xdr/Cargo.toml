@@ -2,3 +2,7 @@
 name = "serde_xdr"
 version = "0.1.0"
 authors = ["Ben Brittain <ben@brittain.org>"]
+
+[lib]
+name = "serde_xdr"
+path = "lib.rs"
