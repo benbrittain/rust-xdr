@@ -29,18 +29,18 @@ macro_rules! impl_num {
 
 pub struct Deserializer<R: Read> {
     reader: R,
-    bytes_consumed: u32
+    bytes_consumed: usize
 }
 
 impl<R: Read> Deserializer<R> {
     pub fn new(reader: R) -> Deserializer<R> {
         Deserializer {
             reader: reader,
-            bytes_consumed: 0u32
+            bytes_consumed: 0
         }
     }
 
-   pub fn get_bytes_consumed(&self) -> u32 {
+   pub fn get_bytes_consumed(&self) -> usize {
         self.bytes_consumed
    }
 }
