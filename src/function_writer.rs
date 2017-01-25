@@ -67,7 +67,7 @@ pub fn version_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
 
 pub fn version_decoder_finalize<S: AsRef<str>>(prog_name: S, ver_num: i64,
                                                wr: &mut CodeWriter) {
-    wr.write_line(&format!("Ok(Some({}Request::V{}(request));",
+    wr.write_line(&format!("Ok(Some({}Request::V{}(request)));",
         prog_name.as_ref(), ver_num));
 }
 
