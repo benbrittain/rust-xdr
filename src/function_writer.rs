@@ -7,11 +7,20 @@ pub fn top_decoder<F>(wr: &mut CodeWriter, cb: F)
         wr.write(
 r###"let header_res = serde_xdr::from_bytes<XdrRpcHeader>(buf.to_slice());
     let header = match header_res {
-        Some(h, consumed) => {
+        Ok(h, consumed) => {
             buf.drain_to(consumed);
             h
-        }, _ => {
-            return io::Error::new(io::ErrorKind::Other, "failed to read header")
+        },
+        Err(e) => {
+            match e => {
+                Io(i) => {
+                    return Err(i);
+                },
+                Other(s) => {
+                    return io::Error::new(io::ErrorKind::Other,
+                        format!("failed to read header: {}", s));
+                }
+            }
         }
     }
 "###);
@@ -82,9 +91,16 @@ r###"let res{0} = serde_xdr::from_bytes<{1}>(buf.to_slice());
             buf.drain_to(consumed);
             arg
         }},
-        None => {{
-            return Err(io::Error::new(io::ErrorKind::Other,
-                "argument {0} parse failure"));
+        Err(e) => {{
+            match e => {{
+                Io(i) => {{
+                    return Err(i);
+                }},
+                Other(s) => {{
+                    return Err(io::Error::new(io::ErrorKind::Other,
+                        format!("argument {0} parse failure: {}"), s));
+                }}
+            }}
         }}
     }}
 "###, arg_index, arg_type.as_ref()));
