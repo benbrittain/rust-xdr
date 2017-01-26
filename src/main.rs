@@ -4,6 +4,7 @@
 extern crate nom;
 extern crate rustc_serialize;
 extern crate serde;
+#[macro_use]
 extern crate serde_xdr;
 
 use std::env;

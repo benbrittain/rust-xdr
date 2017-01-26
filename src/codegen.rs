@@ -110,7 +110,7 @@ fn write_union(ident: Token,
         _=> { unreachable!()}
     };
 
-    wr.pub_enum(id, |wr| {
+    wr.pub_union_enum(id, |wr| {
         for arm in cases.iter() {
             match *arm {
                 Token::UnionCase{ref vals, ref decl} => {
@@ -164,7 +164,7 @@ fn write_enum(ident: Token,
         Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
-    wr.pub_enum(id, |wr| {
+    wr.xdr_enum(id.as_str(), |wr| {
         for &(ref field_id, ref field_val) in fields.iter() {
             match *field_val {
                 Token::Blank => {
@@ -329,7 +329,6 @@ fn write_service(prog_name: &String, versions: &Vec<Token>,
             });
         });
     });
-    
     true
 }
 

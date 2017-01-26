@@ -19,7 +19,6 @@ macro_rules! impl_num {
     ($ty:ty, $deserialize_method:ident, $visitor_method:ident, $read_method:ident, $byte_size:expr) => {
         fn $deserialize_method<V>(self, mut visitor: V) -> DecoderResult<V::Value>
             where V: de::Visitor, {
-                println!("HERE IN {}", stringify!($ty));
                 let res = visitor.$visitor_method(self.$read_method::<BigEndian>()?);
                 self.bytes_consumed += $byte_size;
                 res
@@ -88,7 +87,6 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
 
 
     fn deserialize_enum<V>(self, name: &str, _variants: &'static [&'static str], visitor: V) -> DecoderResult<V::Value> where V: de::Visitor, {
-        println!("{}", name);
         if name == "__UNION_SYMBOL__"  {
           visitor.visit_enum(VariantVisitor::new(self, xdr_enum_type::Union))
         } else {
@@ -211,20 +209,17 @@ impl<R: Read> de::VariantVisitor for Deserializer<R> {
     }
 
     fn visit_newtype<T>(self) -> DecoderResult<T> where T: de::Deserialize {
-        println!("HEEEY 3");
         Err(EncoderError::Unknown(format!("XDR deserialize not implemented for" )))
         //de::Deserialize::deserialize(self)
     }
 
     fn visit_tuple<V>(self, _len: usize, visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
-        println!("HEEEY 2");
         Err(EncoderError::Unknown(format!("XDR deserialize not implemented for" )))
         //de::Deserializer::deserialize(self, visitor)
     }
 
     fn visit_struct<V>(self, _fields: &'static [&'static str], visitor: V)
                                             -> DecoderResult<V::Value> where V: de::Visitor {
-        println!("HEEEY 1");
         Err(EncoderError::Unknown(format!("XDR deserialize not implemented for" )))
         //TODO might need fancier stuff here
         //de::Deserializer::deserialize(self, visitor)
@@ -253,14 +248,12 @@ impl<'a, R: Read + 'a> de::EnumVisitor for VariantVisitor<'a, R> {
     fn visit_variant_seed<V>(self, seed: V) -> DecoderResult<(V::Value, Self)> where V: de::DeserializeSeed, {
         match self.style {
             xdr_enum_type::Union => {
-                println!("It's a union!");
                 let index: u32 = Deserialize::deserialize(&mut *self.de)?;
                 let mut des = index.into_deserializer();
                 let val: Result<V::Value, de::value::Error> = seed.deserialize(des);
                 Ok((val.unwrap(), self))
             },
             xdr_enum_type::Enum => {
-                println!("It's an Enum!");
                 let val = try!(seed.deserialize(&mut *self.de));
                 Ok((val, self))
             }
@@ -272,12 +265,10 @@ impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
     type Error = EncoderError;
 
     fn visit_unit(self) -> DecoderResult<()> {
-        println!("HERE 1");
         de::Deserialize::deserialize(self.de)
     }
 
     fn visit_newtype_seed<T>(self, seed: T) -> DecoderResult<T::Value> where T: de::DeserializeSeed, {
-        println!("HERE 2");
         seed.deserialize(self.de)
     }
 

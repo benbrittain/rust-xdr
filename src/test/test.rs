@@ -2,6 +2,7 @@
 extern crate serde_derive;
 
 extern crate serde;
+#[macro_use]
 extern crate serde_xdr;
 
 mod gen_test;
@@ -53,7 +54,7 @@ fn main() {
     //        my_bool: false
     //    },
     //};
-    
+
     let test = ExampleStatus::ExStatusBool;
 
     let mut bytes = Vec::<u8>::new();

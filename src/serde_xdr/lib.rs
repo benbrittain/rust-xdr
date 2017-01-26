@@ -32,3 +32,47 @@ pub fn from_reader<T: Deserialize, R: Read>(reader: R) -> DecoderResult<(T, usiz
 pub fn from_bytes<T: Deserialize>(v: &[u8]) -> DecoderResult<(T, usize)> {
     from_reader(v)
 }
+
+#[macro_export]
+macro_rules! xdr_enum {
+    ($name:ident { $($variant:ident = $value:expr, )* }) => {
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        pub enum $name {
+            $($variant = $value,)*
+        }
+
+        impl ::serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: ::serde::Serializer {
+                serializer.serialize_i32(*self as i32) // All Enums are signed ints in XDR
+            }
+        }
+
+        impl ::serde::Deserialize for $name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: ::serde::Deserializer {
+
+                struct Visitor;
+
+                impl ::serde::de::Visitor for Visitor {
+                    type Value = $name;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("i32")
+                    }
+
+                    fn visit_i32<E>(self, value: i32) -> Result<$name, E> where E: ::serde::de::Error {
+                        // Rust does not come with a simple way of converting a
+                        // number to an enum, so use a big `match`.
+                        match value {
+                            $( $value => Ok($name::$variant), )*
+                            _ => Err(E::custom(
+                                format!("unknown {} value: {}",
+                                stringify!($name), value))),
+                        }
+                    }
+                }
+                // Deserialize the enum from a u64.
+                deserializer.deserialize_i32(Visitor)
+            }
+        }
+    }
+}
