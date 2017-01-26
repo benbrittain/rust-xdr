@@ -59,7 +59,7 @@ impl<'a> CodeWriter<'a> {
         self.write_line("use std::{io, fmt};");
         self.write_line("use serde_xdr;");
         self.write_line("use xdr_rpc::*;");
-        self.write_line("use tokio_code::io::EasyBuf;");
+        self.write_line("use tokio_core::io::EasyBuf;");
         self.write_line("");
     }
 
@@ -84,20 +84,20 @@ impl<'a> CodeWriter<'a> {
         self.write_line("");
         self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
         self.write_line("#[serde(rename(deserialize = \"__UNION_SYMBOL__\"))]");
-        self.expr_block(&format!("pub enum {}", name.as_ref()), false, cb);
+        self.expr_block(&format!("pub enum {}", name.as_ref()), "", cb);
     }
 
     pub fn pub_enum<S : AsRef<str>, F>(&mut self, name: S, cb: F) where F : FnMut(&mut CodeWriter) {
         self.write_line("");
         self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
-        self.expr_block(&format!("pub enum {}", name.as_ref()), false, cb);
+        self.expr_block(&format!("pub enum {}", name.as_ref()), "", cb);
     }
 
     pub fn pub_struct<S : AsRef<str>, F>(&mut self, name: S, cb: F)
         where F : Fn(&mut CodeWriter) {
             self.write_line("");
             self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
-            self.expr_block(&format!("pub struct {}", name.as_ref()), false, cb);
+            self.expr_block(&format!("pub struct {}", name.as_ref()), "", cb);
     }
 
 
@@ -157,18 +157,27 @@ impl<'a> CodeWriter<'a> {
                                                   cb: F)
             where F: Fn(&mut CodeWriter) {
         self.expr_block(&format!("impl Service for {}", service_name.as_ref()),
-            false, cb);
+            "", cb);
     }
 
     pub fn dispatch_function<F>(&mut self, cb: F)
             where F: Fn(&mut CodeWriter) {
         self.expr_block("fn call (&self, req: Self::Request) -> Self::Future",
-            false, cb);
+            "", cb);
     }
 
     pub fn match_block<S: AsRef<str>, F>(&mut self, s: S, cb: F)
             where F: Fn(&mut CodeWriter) {
-        self.expr_block(&format!("match {} ", s.as_ref()), false, cb);
+        self.expr_block(&format!("match {} ", s.as_ref()), "", cb);
+    }
+
+    pub fn let_match_block<S1: AsRef<str>, S2: AsRef<str>, F>(&mut self,
+                                                              assign: S1,
+                                                              value: S2,
+                                                              cb: F)
+            where F: Fn(&mut CodeWriter) {
+        self.expr_block(&format!("let {} = match {}", assign.as_ref(),
+            value.as_ref()), ";", cb);
     }
 
     pub fn match_option<S1: AsRef<str>, S2: AsRef<str>, F>(&mut self,
@@ -185,7 +194,7 @@ impl<'a> CodeWriter<'a> {
 
     pub fn namespace<S: AsRef<str>, F>(&mut self, name: S, cb: F)
             where F: Fn(&mut CodeWriter) {
-        self.expr_block(&format!("pub mod {}", name.as_ref()), false, cb)
+        self.expr_block(&format!("pub mod {}", name.as_ref()), "", cb)
     }
 
     pub fn var_vec(&mut self, type_: &str) {
@@ -235,9 +244,10 @@ impl<'a> CodeWriter<'a> {
         self.write_line(&format!("{}: {},", name, field_type));
     }
 
-    pub fn expr_block<F>(&mut self, prefix: &str, comma: bool, cb: F)
+    pub fn expr_block<F>(&mut self, prefix: &str, trailing_char: &str, cb: F)
         where F : FnMut(&mut CodeWriter) {
-            self.block(&format!("{} {{", prefix), if comma { "},"} else { "}" }, cb);
+            self.block(&format!("{} {{", prefix),
+                &format!("}}{}", trailing_char), cb);
     }
 
     pub fn xdr_enum<F>(&mut self, prefix: &str, cb: F) where F : FnMut(&mut CodeWriter) {

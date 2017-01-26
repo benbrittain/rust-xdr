@@ -4,7 +4,7 @@ pub fn top_decoder<S: AsRef<str>, F>(prog_name: S, wr: &mut CodeWriter, cb: F)
             where F : Fn(&mut CodeWriter) {
     wr.expr_block(
             &format!("pub fn decode(buf: &mut EasyBuf) -> io::Result<Option<{}Request>>",
-            prog_name.as_ref()), false, |wr| {
+            prog_name.as_ref()), "", |wr| {
         wr.write(
 r###"let header_res = serde_xdr::from_bytes::<XdrRpcHeader>(buf.as_slice());
     let header = match header_res {
@@ -37,12 +37,21 @@ r###"let header_res = serde_xdr::from_bytes::<XdrRpcHeader>(buf.as_slice());
     });
 }
 
-pub fn decoder_miss<S: AsRef<str>>(s: S, wr: &mut CodeWriter) {
+pub fn decoder_miss_impl<S: AsRef<str>>(type_name: &str, suffix: &str, s: S,
+                                        wr: &mut CodeWriter) {
     wr.match_option("_", &Vec::<String>::new(), |wr| {
         wr.write_line(&format!(
-            "return Err(io::Error::new(io::ErrorKind::Other, \"unknown {}\"));",
-            s.as_ref()));
+            "return {}(io::Error::new(io::ErrorKind::Other, \"unknown {}\")){};",
+            type_name, s.as_ref(), suffix));
     });
+}
+
+pub fn decoder_miss<S: AsRef<str>>(s: S, wr: &mut CodeWriter) {
+    decoder_miss_impl("Err", "", s, wr);
+}
+
+pub fn decoder_miss_future<S: AsRef<str>>(s: S, wr: &mut CodeWriter) {
+    decoder_miss_impl("future::err", ".boxed()", s, wr);
 }
 
 pub fn prog_decoder<S1: AsRef<str>, S2: AsRef<str>, F>(prog_name:S1,
@@ -53,7 +62,7 @@ pub fn prog_decoder<S1: AsRef<str>, S2: AsRef<str>, F>(prog_name:S1,
     wr.expr_block(&format!(
 r###"pub fn {}(version: u32, procedure: u32, buf: &mut EasyBuf) ->
     io::Result<Option<{}Request>>"###, fn_name.as_ref(), prog_name.as_ref()),
-    false, cb);
+    "", cb);
 }
 
 pub fn prog_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
@@ -63,8 +72,7 @@ pub fn prog_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
 
 pub fn version_decoder_match<F>(wr: &mut CodeWriter, cb: F)
         where F : Fn(&mut CodeWriter) {
-    wr.expr_block("let request = match procedure", false, cb);
-    wr.write_line(";");
+    wr.let_match_block("request", "procedure", cb);
 }
 
 pub fn version_decoder<S1: AsRef<str>, S2: AsRef<str>, F>(prog_name: S1,
@@ -74,7 +82,8 @@ pub fn version_decoder<S1: AsRef<str>, S2: AsRef<str>, F>(prog_name: S1,
         where F : Fn(&mut CodeWriter) {
     wr.expr_block(&format!(
 r###"pub fn {}(procedure: u32, buf: &mut EasyBuf) ->
-    io::Result<Option<{}Request>>"###, fn_name.as_ref(), prog_name.as_ref()), false, cb);
+    io::Result<Option<{}Request>>"###, fn_name.as_ref(), prog_name.as_ref()),
+    "", cb);
 }
 
 pub fn version_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
@@ -94,8 +103,8 @@ pub fn proc_decoder<S1: AsRef<str>, S2: AsRef<str>, F>(prog_name: S1,
                                                        cb: F)
         where F : Fn(&mut CodeWriter) {
     wr.expr_block(
-        &format!("pub fn {}(buf: &mut EasyBuf) -> io::Result<Option<{}Request{}>>",
-        fn_name.as_ref(), prog_name.as_ref(), ver_num), false, cb);
+        &format!("pub fn {}(buf: &mut EasyBuf) -> io::Result<Option<{}RequestV{}>>",
+        fn_name.as_ref(), prog_name.as_ref(), ver_num), "", cb);
 }
 
 pub fn proc_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
@@ -139,7 +148,7 @@ pub fn encoder<S: AsRef<str>, F>(prog_name: S, wr: &mut CodeWriter, cb: F)
         where F : Fn(&mut CodeWriter) {
     wr.expr_block(&format!(
         "pub fn encode(msg: {}Response, buf: &mut Vec<u8>) -> io::Result<()>",
-        prog_name.as_ref()), false, cb);
+        prog_name.as_ref()), "", cb);
 }
 
 pub fn encoder_version<S: AsRef<str>, F>(prog_name: S, ver_num: i64,
@@ -152,9 +161,18 @@ pub fn encoder_version<S: AsRef<str>, F>(prog_name: S, ver_num: i64,
 pub fn encoder_proc<S1: AsRef<str>, S2: AsRef<str>>(prog_name: S1,
                                                     proc_name: S2,
                                                     ver_num: i64,
+                                                    has_return: bool,
                                                     wr: &mut CodeWriter) {
+    let mut arg_list = if has_return {
+        vec!["r"]
+    } else {
+        Vec::<&str>::new()
+    };
+
     wr.match_option(&format!("{}ResponseV{}::{}", prog_name.as_ref(), ver_num,
-            proc_name.as_ref()), &vec!["r"], |wr| {
-        wr.write_line("try!(serde_xdr::to_bytes(r, buf));");
+            proc_name.as_ref()), &arg_list, |wr| {
+        if has_return {
+            wr.write_line("try!(serde_xdr::to_bytes(&r, buf));");
+        }
     });
 }
