@@ -87,13 +87,30 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
     not_implemented!(
         serialize_f32(val: f32,);
         serialize_f64(val: f64,);
-        serialize_char(val: char,);
-        serialize_str(val: &str,);
         serialize_none();
-        serialize_bytes(val: &[u8],);
         serialize_unit_struct(_name: &'static str,);
     );
 
+    fn serialize_bytes(self, val: &[u8]) -> EncoderResult<()> {
+        Err(EncoderError::Unknown(String::from("Not yet implemented")))
+    }
+
+    fn serialize_char(self, val: char) -> EncoderResult<()> {
+        self.serialize_u8(val as u8)
+    }
+
+    fn serialize_str(self, val: &str) -> EncoderResult<()> {
+        self.serialize_u32((val.len() as u32));
+        let extra_bytes = 4 - val.len() % 4;
+        for c in val.chars() {
+            self.serialize_char(c);
+        }
+        // Spec needs padding to multiple of 4
+        for _ in 0 .. extra_bytes {
+            self.serialize_u8(0 as u8);
+        }
+        Ok(())
+    }
     fn serialize_bool(self, v: bool) -> EncoderResult<()> {
         self.writer.write_u8(if v {1} else {0}).map_err(From::from)
     }
@@ -165,21 +182,6 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
             }
         }
     }
-
-    //fn serialize_seq_elt<T>(self, state: &mut Option<usize>,
-    //                        value: T) -> EncoderResult<()> where T: Serialize {
-    //    value.serialize(self);
-    //    let mut len = state.unwrap();
-    //    if len > 0 {
-    //        match state.iter_mut().next() { // TODO there is probably an easier way to grab a mut ref to an option
-    //            Some(v) => *v = len - 1,
-    //            None => {},
-    //        }
-    //        Ok(())
-    //    } else {
-    //        Err(EncoderError::Unknown(String::from("Sequence Serializer ran out of items!")))
-    //    }
-    //}
 }
 
 pub struct Compound<'a, W: 'a> {

@@ -69,7 +69,6 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
     not_implemented!(
         deserialize_char();
         deserialize_str();
-        deserialize_string();
         deserialize_unit();
         deserialize_option();
         deserialize_bytes();
@@ -83,6 +82,18 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
 
     fn deserialize_struct_field<V>(self, visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
         self.deserialize(visitor)
+    }
+
+
+    fn deserialize_string<V>(self, mut visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
+        let count: u32 = self.read_u32::<BigEndian>()?;
+        let extra_bytes = 4 - count % 4;
+        let mut accum = String::new();
+        for c in 0 .. count {
+            accum.push(self.read_u8()? as char);
+        }
+        self.bytes_consumed += (extra_bytes + count + 4) as usize;
+        return visitor.visit_string(accum);
     }
 
 
