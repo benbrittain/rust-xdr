@@ -189,7 +189,7 @@ named!(constant_def<Token>,
      c: constant            >>
         opt!(multispace)    >>
         tag!(";")           >>
-        opt!(inline_comment)>>
+        opt!(comment)>>
         (Token::ConstantDef(Box::new(c)))
     )
 );
@@ -298,7 +298,7 @@ named!(union_case<&[u8], Token>,
         opt!(multispace)        >>
         tag!(";")               >>
         opt!(multispace)        >>
-        opt!(inline_comment)    >>
+        opt!(comment)    >>
         opt!(multispace)        >>
         (Token::UnionCase {
                vals: cases,
@@ -316,7 +316,7 @@ named!(default_case<&[u8], Token>,
         opt!(multispace)        >>
         tag!(";")               >>
         opt!(multispace)        >>
-        opt!(inline_comment)    >>
+        opt!(comment)    >>
         opt!(multispace)        >>
         (decl)
     )
@@ -330,7 +330,7 @@ named!(case_def<&[u8], Token>,
            opt!(multispace)     >>
            tag!(":")            >>
            opt!(multispace)     >>
-           opt!(inline_comment) >>
+           opt!(comment) >>
            opt!(multispace)     >>
            (value)
        )
@@ -385,7 +385,7 @@ named!(enum_kv<&[u8], (Token, Token)>,
     alt!(
         do_parse!(
            opt!(multispace)        >>
-           many0!(inline_comment)  >>
+           many0!(comment)  >>
            opt!(multispace)        >>
       key: identifier              >>
            opt!(multispace)        >>
@@ -395,7 +395,7 @@ named!(enum_kv<&[u8], (Token, Token)>,
            opt!(multispace)        >>
            opt!(tag!(","))         >>
            opt!(multispace)        >>
-           opt!(inline_comment)    >>
+           opt!(comment)    >>
            opt!(multispace)        >>
            (key, val)
        ) |
@@ -405,7 +405,7 @@ named!(enum_kv<&[u8], (Token, Token)>,
            opt!(multispace)        >>
            opt!(tag!(","))         >>
            opt!(multispace)        >>
-           many0!(inline_comment)  >>
+           many0!(comment)  >>
            opt!(multispace)        >>
            (key, Token::Blank)
        )
@@ -439,7 +439,7 @@ named!(struct_decls<&[u8], Token>,
         opt!(multispace)        >>
         tag!(";")               >>
         opt!(multispace)        >>
-        opt!(inline_comment)    >>
+        opt!(comment)    >>
         opt!(multispace)        >>
         (decl)
     )
