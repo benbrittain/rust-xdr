@@ -709,8 +709,7 @@ fn codegen(wr: &mut CodeWriter, tokens: Option<Vec<Token>>, mut tab: &mut Codege
             }
 			_ => {
                 println!("Codegen isn't supported for this token yet");
-                //break
-                // Err("Unsuported token")
+                break;
             }
 		}
 	}
@@ -724,6 +723,8 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
 
     let mut tab = CodegenState::new("CodegenTable");
     wr.write_header();
+
+    // TODO make this cycle until tab.hoisted is empty
     codegen(wr, tokens, &mut tab);
     codegen(wr, Some(tab.get_hoisted()), &mut tab)
 }
