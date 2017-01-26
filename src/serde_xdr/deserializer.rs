@@ -45,6 +45,13 @@ impl<R: Read> Deserializer<R> {
    }
 }
 
+
+enum xdr_enum_type{
+    Enum,
+    Union
+}
+
+
 impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
     type Error = EncoderError;
 
@@ -71,12 +78,22 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
         deserialize_unit_struct(_name: &'static str,);
         deserialize_tuple_struct(_name: &'static str, _len: usize,);
         deserialize_tuple(_len: usize,);
-        deserialize_struct_field();
         deserialize_ignored_any();
-        );
+    );
 
-    fn deserialize_enum<V>( self, _name: &str, _variants: &'static [&'static str], visitor: V) -> DecoderResult<V::Value> where V: de::Visitor, {
-        Err(EncoderError::Unknown(String::from("not done implementing")))
+
+    fn deserialize_struct_field<V>(self, visitor: V) -> DecoderResult<V::Value> where V: de::Visitor {
+        self.deserialize(visitor)
+    }
+
+
+    fn deserialize_enum<V>(self, name: &str, _variants: &'static [&'static str], visitor: V) -> DecoderResult<V::Value> where V: de::Visitor, {
+        println!("{}", name);
+        if name == "__UNION_SYMBOL__"  {
+          visitor.visit_enum(VariantVisitor::new(self, xdr_enum_type::Union))
+        } else {
+          visitor.visit_enum(VariantVisitor::new(self, xdr_enum_type::Enum))
+        }
     }
 
     fn deserialize_byte_buf<V:Visitor>(self, mut visitor: V) ->  DecoderResult<V::Value> {
@@ -173,18 +190,6 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
     }
 }
 
-//impl<R: Read> de::EnumVisitor for VariantVisitor<R> {
-//    type Error = EncoderError;
-//    type Variant = Self;
-//
-//    fn visit_variant_seed<V>(self, seed: V) -> DecoderResult<(V::Value, Self)> where V: de::DeserializeSeed, {
-//        let val = try!(seed.deserialize(&mut *self.de));
-//        try!(self.de.parse_object_colon());
-//        Ok((val, self))
-//    }
-//}
-
-
 impl<R: Read> de::VariantVisitor for Deserializer<R> {
     type Error = EncoderError;
 
@@ -225,3 +230,63 @@ impl<R: Read> de::VariantVisitor for Deserializer<R> {
         //de::Deserializer::deserialize(self, visitor)
     }
 }
+
+
+struct VariantVisitor<'a, R: Read + 'a> {
+    de: &'a mut Deserializer<R>,
+    style: xdr_enum_type,
+}
+
+impl<'a, R: Read + 'a> VariantVisitor<'a, R> {
+    fn new(de: &'a mut Deserializer<R>, style: xdr_enum_type) -> Self {
+        VariantVisitor {
+            de: de,
+            style: style,
+        }
+    }
+}
+
+impl<'a, R: Read + 'a> de::EnumVisitor for VariantVisitor<'a, R> {
+    type Error = EncoderError;
+    type Variant = Self;
+
+    fn visit_variant_seed<V>(self, seed: V) -> DecoderResult<(V::Value, Self)> where V: de::DeserializeSeed, {
+        match self.style {
+            xdr_enum_type::Union => {
+                println!("It's a union!");
+                let index: u32 = Deserialize::deserialize(&mut *self.de)?;
+                let mut des = index.into_deserializer();
+                let val: Result<V::Value, de::value::Error> = seed.deserialize(des);
+                Ok((val.unwrap(), self))
+            },
+            xdr_enum_type::Enum => {
+                println!("It's an Enum!");
+                let val = try!(seed.deserialize(&mut *self.de));
+                Ok((val, self))
+            }
+        }
+    }
+}
+
+impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
+    type Error = EncoderError;
+
+    fn visit_unit(self) -> DecoderResult<()> {
+        println!("HERE 1");
+        de::Deserialize::deserialize(self.de)
+    }
+
+    fn visit_newtype_seed<T>(self, seed: T) -> DecoderResult<T::Value> where T: de::DeserializeSeed, {
+        println!("HERE 2");
+        seed.deserialize(self.de)
+    }
+
+    fn visit_tuple<V>(self, len: usize, visitor: V) -> DecoderResult<V::Value> where V: de::Visitor, {
+        visitor.visit_seq(SeqVisitor::new(self.de, Some(len as u32)))
+    }
+
+    fn visit_struct<V>( self, fields: &'static [&'static str], visitor: V) -> DecoderResult<V::Value> where V: de::Visitor, {
+        visitor.visit_seq(SeqVisitor::new(self.de, Some(fields.len() as u32)))
+    }
+}
+
