@@ -6,7 +6,7 @@ pub fn top_decoder<S: AsRef<str>, F>(prog_name: S, wr: &mut CodeWriter, cb: F)
             &format!("pub fn decode(buf: &mut EasyBuf) -> io::Result<Option<{}Request>>",
             prog_name.as_ref()), "", |wr| {
         wr.write(
-r###"let header_res = serde_xdr::from_bytes::<XdrRpcHeader>(buf.as_slice());
+r###"let header_res = serde_xdr::from_bytes::<xdr_rpc::XdrRpcHeader>(buf.as_slice());
     let header = match header_res {
         Ok((h, consumed)) => {
             buf.drain_to(consumed);
@@ -60,7 +60,7 @@ pub fn prog_decoder<S1: AsRef<str>, S2: AsRef<str>, F>(prog_name:S1,
                                                        cb: F)
         where F : Fn(&mut CodeWriter) {
     wr.expr_block(&format!(
-r###"pub fn {}(version: u32, procedure: u32, buf: &mut EasyBuf) ->
+r###"pub fn {}(program: u32, version: u32, procedure: u32, buf: &mut EasyBuf) ->
     io::Result<Option<{}Request>>"###, fn_name.as_ref(), prog_name.as_ref()),
     "", cb);
 }
@@ -92,7 +92,7 @@ pub fn version_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
 
 pub fn version_decoder_finalize<S: AsRef<str>>(prog_name: S, ver_num: i64,
                                                wr: &mut CodeWriter) {
-    wr.write_line(&format!("Ok(Some({}Request::V{}(request)))",
+    wr.write_line(&format!("Ok(Some({}Request::V{}(request.unwrap().unwrap())))",
         prog_name.as_ref(), ver_num));
 }
 
@@ -182,16 +182,16 @@ pub fn wrap_proc_result<S1: AsRef<str>, S2: AsRef<str>>(prog_name: S1,
                                                         proc_name: S2,
                                                         has_return: bool,
                                                         wr: &mut CodeWriter) {
-    let (lambda_arg, wrapper_arg) = if has_return {
-        ("r", "(r)")
+    let wrapper_arg = if has_return {
+        "(r)"
     } else {
-        ("", "")
+        ""
     };
     wr.raw_write(
-&format!(r###".map(|{}| {{
+&format!(r###".map(|r| {{
                 {}ResponseV{}::{}{}
               }})"###,
-    lambda_arg, prog_name.as_ref(), ver_num, proc_name.as_ref(), wrapper_arg));
+    prog_name.as_ref(), ver_num, proc_name.as_ref(), wrapper_arg));
 }
 
 pub fn wrap_version_result<S: AsRef<str>>(prog_name: S, ver_num: i64,

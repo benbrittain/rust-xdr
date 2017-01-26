@@ -508,6 +508,7 @@ fn write_decoder(prog_name: &String, prog_id: i64, versions: &Vec<Token>,
                  wr: &mut CodeWriter) -> bool {
     let prog_decoder_fn = format!("{}_decode", prog_name.to_lowercase());
 
+    /*
     top_decoder(rustify(prog_name).as_str(), wr, |wr| {
         wr.match_block("header.program", |wr| {
             wr.match_option(&format!("{}u32", prog_id), &Vec::<String>::new(), |wr| {
@@ -516,6 +517,7 @@ fn write_decoder(prog_name: &String, prog_id: i64, versions: &Vec<Token>,
             decoder_miss("program", wr);
         });
     });
+    */
 
     prog_decoder(rustify(prog_name).as_str(), &prog_decoder_fn, wr, |wr| {
         wr.match_block("version", |wr| {
@@ -591,6 +593,7 @@ fn write_encoder(prog_name: &String, versions: &Vec<Token>,
 
 fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
     wr.namespace(name, |wr| {
+        wr.write_line("use super::*;");
         for ptoken in progs {
             if let Token::Program{ref name, ref id, ref versions} = *ptoken {
                 if let Token::Ident(ref name_str) = **name{

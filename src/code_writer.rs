@@ -58,7 +58,7 @@ impl<'a> CodeWriter<'a> {
         self.write_line("#[allow(dead_code)]");
         self.write_line("use std::{io, fmt};");
         self.write_line("use serde_xdr;");
-        self.write_line("use xdr_rpc::*;");
+        self.write_line("use xdr_rpc;");
         self.write_line("use tokio_core::io::EasyBuf;");
         self.write_line("");
     }

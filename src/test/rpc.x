@@ -85,7 +85,7 @@ struct accepted_reply {
     opaque_auth verf;
     union switch (accept_stat stat) {
         case SUCCESS:
-            unsigned int vers;
+            void;
         case PROG_MISMATCH:
             unsigned int vers;
         default:
