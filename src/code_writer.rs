@@ -63,37 +63,37 @@ impl<'a> CodeWriter<'a> {
         self.write_line("");
     }
 
-    fn alias_impl<S : AsRef<str>, F>(&mut self, prefix: &str,  name: S, cb: F)
-        where F : Fn(&mut CodeWriter) {
+    fn alias_impl<S : AsRef<str>, F>(&mut self, prefix: &str,  name: S, mut cb: F)
+        where F : FnMut(&mut CodeWriter) {
             self.write(&format!("{}type {} = ", prefix, name.as_ref()));
             cb(self);
             self.raw_write(";\n")
     }
 
-    pub fn alias<S : AsRef<str>, F>(&mut self, name: S, cb: F)
-            where F : Fn(&mut CodeWriter) {
+    pub fn alias<S : AsRef<str>, F>(&mut self, name: S, mut cb: F)
+            where F : FnMut(&mut CodeWriter) {
         self.alias_impl("", name, cb);
     }
 
-    pub fn pub_alias<S : AsRef<str>, F>(&mut self, name: S, cb: F)
-            where F : Fn(&mut CodeWriter) {
+    pub fn pub_alias<S : AsRef<str>, F>(&mut self, name: S, mut cb: F)
+            where F : FnMut(&mut CodeWriter) {
         self.alias_impl("pub ", name, cb);
     }
 
-    pub fn pub_union_enum<S : AsRef<str>, F>(&mut self, name: S, cb: F) where F : FnMut(&mut CodeWriter) {
+    pub fn pub_union_enum<S : AsRef<str>, F>(&mut self, name: S, mut cb: F) where F : FnMut(&mut CodeWriter) {
         self.write_line("");
         self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
         self.write_line("#[serde(rename(deserialize = \"__UNION_SYMBOL__\"))]");
         self.expr_block(&format!("pub enum {}", name.as_ref()), "", cb);
     }
 
-    pub fn pub_enum<S : AsRef<str>, F>(&mut self, name: S, cb: F) where F : FnMut(&mut CodeWriter) {
+    pub fn pub_enum<S : AsRef<str>, F>(&mut self, name: S, mut cb: F) where F : FnMut(&mut CodeWriter) {
         self.write_line("");
         self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
         self.expr_block(&format!("pub enum {}", name.as_ref()), "", cb);
     }
 
-    pub fn pub_struct<S : AsRef<str>, F>(&mut self, name: S, cb: F)
+    pub fn pub_struct<S : AsRef<str>, F>(&mut self, name: S, mut cb: F)
         where F : FnMut(&mut CodeWriter) {
             self.write_line("");
             self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
@@ -102,8 +102,8 @@ impl<'a> CodeWriter<'a> {
 
 
     pub fn program_version_request<S: AsRef<str>, F>(&mut self, prog_name: S,
-                                                     ver_num: i64, cb: F)
-            where F: Fn(&mut CodeWriter) {
+                                                     ver_num: i64, mut cb: F)
+            where F: FnMut(&mut CodeWriter) {
         self.pub_enum(&format!("{}RequestV{}", prog_name.as_ref(), ver_num),
             cb);
 
@@ -137,8 +137,8 @@ impl<'a> CodeWriter<'a> {
     }
 
     pub fn program_version_response<S: AsRef<str>, F>(&mut self, prog_name: S,
-                                                     ver_num: i64, cb: F)
-            where F: Fn(&mut CodeWriter) {
+                                                     ver_num: i64, mut cb: F)
+            where F: FnMut(&mut CodeWriter) {
         self.pub_enum(&format!("{}ResponseV{}", prog_name.as_ref(), ver_num),
             cb);
     }
@@ -155,19 +155,19 @@ impl<'a> CodeWriter<'a> {
 
     pub fn program_version_service<S: AsRef<str>, F>(&mut self, service_name: S,
                                                   cb: F)
-            where F: Fn(&mut CodeWriter) {
+            where F: FnMut(&mut CodeWriter) {
         self.expr_block(&format!("impl Service for {}", service_name.as_ref()),
             "", cb);
     }
 
-    pub fn dispatch_function<F>(&mut self, cb: F)
-            where F: Fn(&mut CodeWriter) {
+    pub fn dispatch_function<F>(&mut self, mut cb: F)
+            where F: FnMut(&mut CodeWriter) {
         self.expr_block("fn call (&self, req: Self::Request) -> Self::Future",
             "", cb);
     }
 
-    pub fn match_block<S: AsRef<str>, F>(&mut self, s: S, cb: F)
-            where F: Fn(&mut CodeWriter) {
+    pub fn match_block<S: AsRef<str>, F>(&mut self, s: S, mut cb: F)
+            where F: FnMut(&mut CodeWriter) {
         self.expr_block(&format!("match {} ", s.as_ref()), "", cb);
     }
 
@@ -175,7 +175,7 @@ impl<'a> CodeWriter<'a> {
                                                               assign: S1,
                                                               value: S2,
                                                               cb: F)
-            where F: Fn(&mut CodeWriter) {
+            where F: FnMut(&mut CodeWriter) {
         self.expr_block(&format!("let {} = match {}", assign.as_ref(),
             value.as_ref()), ";", cb);
     }
@@ -184,7 +184,7 @@ impl<'a> CodeWriter<'a> {
                                                             type_name: S1,
                                                             fields: &Vec<S2>,
                                                             cb: F)
-            where F: Fn(&mut CodeWriter) {
+            where F: FnMut(&mut CodeWriter) {
         self.write(type_name);
         self.optional_fields(fields);
         self.raw_write(" => {\n");
@@ -192,8 +192,8 @@ impl<'a> CodeWriter<'a> {
         self.write_line("},");
     }
 
-    pub fn namespace<S: AsRef<str>, F>(&mut self, name: S, cb: F)
-            where F: Fn(&mut CodeWriter) {
+    pub fn namespace<S: AsRef<str>, F>(&mut self, name: S, mut cb: F)
+            where F: FnMut(&mut CodeWriter) {
         self.expr_block(&format!("pub mod {}", name.as_ref()), "", cb)
     }
 
@@ -201,14 +201,14 @@ impl<'a> CodeWriter<'a> {
         self.write(&format!("Vec<{}>", type_));
     }
 
-    pub fn enum_tuple_decl<F>(&mut self, name: &str, cb: F)
-        where F : Fn(&mut CodeWriter) {
+    pub fn enum_tuple_decl<F>(&mut self, name: &str, mut cb: F)
+        where F : FnMut(&mut CodeWriter) {
             self.write(&format!("{}(", name));
             cb(self);
             self.raw_write("),\n");
     }
 
-    pub fn enum_struct_decl<F>(&mut self, name: &str, cb: F)
+    pub fn enum_struct_decl<F>(&mut self, name: &str, mut cb: F)
         where F : FnMut(&mut CodeWriter) {
             self.write_line(&format!("{} {{", name));
             self.indented(cb);
@@ -244,17 +244,17 @@ impl<'a> CodeWriter<'a> {
         self.write_line(&format!("{}: {},", name, field_type));
     }
 
-    pub fn expr_block<F>(&mut self, prefix: &str, trailing_char: &str, cb: F)
+    pub fn expr_block<F>(&mut self, prefix: &str, trailing_char: &str, mut cb: F)
         where F : FnMut(&mut CodeWriter) {
             self.block(&format!("{} {{", prefix),
                 &format!("}}{}", trailing_char), cb);
     }
 
-    pub fn xdr_enum<F>(&mut self, prefix: &str, cb: F) where F : FnMut(&mut CodeWriter) {
+    pub fn xdr_enum<F>(&mut self, prefix: &str, mut cb: F) where F : FnMut(&mut CodeWriter) {
             self.block(&format!("xdr_enum!({} {{", prefix), "});", cb);
     }
 
-    pub fn block<F>(&mut self, first_line: &str, last_line: &str, cb: F)
+    pub fn block<F>(&mut self, first_line: &str, last_line: &str, mut cb: F)
         where F : FnMut(&mut CodeWriter) {
             self.write_line(first_line);
             self.indented(cb);

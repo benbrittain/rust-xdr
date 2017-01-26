@@ -52,7 +52,8 @@ fn convert_basic_token(ident: &Token, is_type: bool) -> String {
             }
         },
         Token::Constant(ref val) => { val.to_string() },
-        _ => { String::from("UNSUPORTED_TYPE") }
+        //_ => { String::from("UNSUPORTED_TYPE") }
+        _ => { format!("UNSUPORTED TYPE: {:?}", ident) }
     };
     type_
 }
@@ -75,6 +76,15 @@ fn write_struct(ident: Token,
                                 convert_basic_token(field_id, false).as_str(),
                                 convert_basic_token(field_id, true).as_str());
                             tab.hoist(&Token::UnionDef{
+                                id: Box::new(*field_id.clone()),
+                                decl: Box::new(*field_type.clone()),
+                            });
+                        },
+                        Token::Struct(_) => {
+                            wr.pub_field_decl(
+                                convert_basic_token(field_id, false).as_str(),
+                                convert_basic_token(field_id, true).as_str());
+                            tab.hoist(&Token::StructDef{
                                 id: Box::new(*field_id.clone()),
                                 decl: Box::new(*field_type.clone()),
                             });
@@ -143,14 +153,36 @@ fn write_union(ident: &Token,
                     for case in vals.iter() {
                         let token =  tab.get_symbol(ns, &case);
                         if let Some(t) = token {
-                            wr.enc_annotation(convert_basic_token(t, false).as_str());
+                            wr.enc_annotation(convert_basic_token(&t, false).as_str());
                         }
                         wr.enum_struct_decl(convert_basic_token(case, true).as_str(), |wr| {
                             match **decl {
-                                Token::Decl{ref ty, ref id} => {
-                                    wr.field_decl(
-                                        convert_basic_token(id, false).as_str(),
-                                        convert_basic_token(ty, true).as_str());
+                                Token::Decl{ty: ref field_type, id: ref field_id} => {
+                                    match **field_type {
+                                        Token::Union{decl: ref decl, ref cases, ref default} => {
+                                            wr.field_decl(
+                                                convert_basic_token(field_id, false).as_str(),
+                                                convert_basic_token(field_id, true).as_str());
+                                            tab.hoist(&Token::UnionDef{
+                                                id: Box::new(*field_id.clone()),
+                                                decl: Box::new(*field_type.clone()),
+                                            });
+                                        },
+                                        Token::Struct(_) => {
+                                            wr.field_decl(
+                                                convert_basic_token(field_id, false).as_str(),
+                                                convert_basic_token(field_id, true).as_str());
+                                            tab.hoist(&Token::StructDef{
+                                                id: Box::new(*field_id.clone()),
+                                                decl: Box::new(*field_type.clone()),
+                                            });
+                                        },
+                                        _ => {
+                                            wr.field_decl(
+                                                convert_basic_token(field_id, false).as_str(),
+                                                convert_basic_token(field_type, true).as_str());
+                                        }
+                                    }
                                 },
                                 _ => { /* void decl probably */ }
                             };
@@ -616,9 +648,9 @@ impl<'a> CodegenState<'a> {
         }
     }
 
-    fn get_symbol(&mut self, ns_tkn: &Token, id_tkn: &Token) -> Option<&Token> {
+    fn get_symbol(&mut self, ns_tkn: &Token, id_tkn: &Token) -> Option<Token> {
         let key = (ns_tkn.clone(), id_tkn.clone());
-        self.table.get(&key)
+        Some(self.table.get(&key).unwrap().clone())
     }
 }
 
