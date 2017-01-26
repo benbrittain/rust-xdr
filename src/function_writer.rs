@@ -92,7 +92,7 @@ pub fn version_decoder_call<S: AsRef<str>>(fn_name: S, wr: &mut CodeWriter) {
 
 pub fn version_decoder_finalize<S: AsRef<str>>(prog_name: S, ver_num: i64,
                                                wr: &mut CodeWriter) {
-    wr.write_line(&format!("Ok(Some({}Request::V{}(request)));",
+    wr.write_line(&format!("Ok(Some({}Request::V{}(request)))",
         prog_name.as_ref(), ver_num));
 }
 
@@ -175,4 +175,29 @@ pub fn encoder_proc<S1: AsRef<str>, S2: AsRef<str>>(prog_name: S1,
             wr.write_line("try!(serde_xdr::to_bytes(&r, buf));");
         }
     });
+}
+
+pub fn wrap_proc_result<S1: AsRef<str>, S2: AsRef<str>>(prog_name: S1,
+                                                        ver_num: i64,
+                                                        proc_name: S2,
+                                                        has_return: bool,
+                                                        wr: &mut CodeWriter) {
+    let (lambda_arg, wrapper_arg) = if has_return {
+        ("r", "(r)")
+    } else {
+        ("", "")
+    };
+    wr.raw_write(
+&format!(r###".map(|{}| {{
+                {}ResponseV{}::{}{}
+              }})"###,
+    lambda_arg, prog_name.as_ref(), ver_num, proc_name.as_ref(), wrapper_arg));
+}
+
+pub fn wrap_version_result<S: AsRef<str>>(prog_name: S, ver_num: i64,
+                                          wr: &mut CodeWriter) {
+    wr.write_line(
+&format!(r###"res.map(|r| {{
+            {}Response::V{}(r)
+          }}).boxed()"###, prog_name.as_ref(), ver_num));
 }

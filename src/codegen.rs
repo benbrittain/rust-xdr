@@ -266,17 +266,28 @@ fn write_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
 }
 
 fn write_service_proc(prog_name: &String, ver_num: i64, proc_name: &Token,
-                      arg_types: &Vec<Token>, wr: &mut CodeWriter) {
+                      ret_type: &Token, arg_types: &Vec<Token>,
+                      wr: &mut CodeWriter) {
     let arg_names = (0..arg_types.len()).filter(|x| {
         match arg_types[*x] { Token::VoidDecl => { false}, _ => { true } }
     }).map(|x| { format!("arg{}", x) }).collect();
+    let proc_name_str = convert_basic_token(proc_name, true);
     wr.match_option(&format!("{}RequestV{}::{}", prog_name, ver_num,
-        convert_basic_token(proc_name, true).as_str()), &arg_names, |wr| {
+        proc_name_str.as_str()), &arg_names, |wr| {
         wr.write(&format!("self.{}_v{}(",
             convert_basic_token(proc_name, false).as_str().to_lowercase(),
             ver_num));
         wr.comma_fields(&arg_names);
-        wr.raw_write(")\n");
+        wr.raw_write(")");
+
+        let has_return = match *ret_type {
+            Token::VoidDecl => false,
+            _ => true
+        };
+
+        wrap_proc_result(prog_name, ver_num, proc_name_str.as_str(),
+            has_return, wr);
+        wr.raw_write("\n");
     });
 }
 
@@ -290,11 +301,12 @@ fn write_service_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
                 if let Token::Proc{ref return_type, ref name, ref arg_types,
                         ref id} = *ptoken {
                     write_service_proc(prog_name, ver_num, (*name).as_ref(),
-                        arg_types, wr);
+                        &(**return_type), arg_types, wr);
                 }
             }
             decoder_miss_future("procedure", wr);
         });
+        wrap_version_result(prog_name, ver_num, wr);
     });
 }
 
