@@ -86,11 +86,11 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
     }
 
 
-    fn deserialize_enum<V>(self, name: &str, _variants: &'static [&'static str], visitor: V) -> DecoderResult<V::Value> where V: de::Visitor, {
+    fn deserialize_enum<V>(self, name: &str, variants: &'static [&'static str], visitor: V) -> DecoderResult<V::Value> where V: de::Visitor, {
         if name == "__UNION_SYMBOL__"  {
-          visitor.visit_enum(VariantVisitor::new(self, xdr_enum_type::Union))
+            visitor.visit_enum(VariantVisitor::new(self, xdr_enum_type::Union, variants))
         } else {
-          visitor.visit_enum(VariantVisitor::new(self, xdr_enum_type::Enum))
+            visitor.visit_enum(VariantVisitor::new(self, xdr_enum_type::Enum, variants))
         }
     }
 
@@ -197,13 +197,6 @@ impl<R: Read> de::VariantVisitor for Deserializer<R> {
         //seed.deserialize(self)
     }
 
-    //fn visit_variant<V>(self) -> DecoderResult<V> where V: de::Deserialize {
-    //    let idx: u32 = Deserialize::deserialize(self)?;
-    //    let mut deserializer = (idx as usize).into_deserializer();
-    //    let attempt: DecoderResult<V> = Deserialize::deserialize(&mut deserializer);
-    //    Ok(attempt?)
-    //}
-
     fn visit_unit(self) -> DecoderResult<()> {
         Ok(())
     }
@@ -221,8 +214,6 @@ impl<R: Read> de::VariantVisitor for Deserializer<R> {
     fn visit_struct<V>(self, _fields: &'static [&'static str], visitor: V)
                                             -> DecoderResult<V::Value> where V: de::Visitor {
         Err(EncoderError::Unknown(format!("XDR deserialize not implemented for" )))
-        //TODO might need fancier stuff here
-        //de::Deserializer::deserialize(self, visitor)
     }
 }
 
@@ -230,13 +221,15 @@ impl<R: Read> de::VariantVisitor for Deserializer<R> {
 struct VariantVisitor<'a, R: Read + 'a> {
     de: &'a mut Deserializer<R>,
     style: xdr_enum_type,
+    variants: &'static [&'static str]
 }
 
 impl<'a, R: Read + 'a> VariantVisitor<'a, R> {
-    fn new(de: &'a mut Deserializer<R>, style: xdr_enum_type) -> Self {
+    fn new(de: &'a mut Deserializer<R>, style: xdr_enum_type, variants: &'static [&'static str]) -> Self {
         VariantVisitor {
             de: de,
             style: style,
+            variants: variants,
         }
     }
 }
@@ -248,8 +241,15 @@ impl<'a, R: Read + 'a> de::EnumVisitor for VariantVisitor<'a, R> {
     fn visit_variant_seed<V>(self, seed: V) -> DecoderResult<(V::Value, Self)> where V: de::DeserializeSeed, {
         match self.style {
             xdr_enum_type::Union => {
-                let index: u32 = Deserialize::deserialize(&mut *self.de)?;
-                let mut des = index.into_deserializer();
+                let enum_index: u32 = Deserialize::deserialize(&mut *self.de)?;
+                let ids = self.variants.iter().map(|x| x.parse::<u32>().unwrap()).position(|x| x == enum_index);
+                let union_index = match ids {
+                    Some(idx) => idx as u32,
+                    None => {
+                        return Err(EncoderError::Unknown(format!("Bad Index for Union, the codegen annotations are broken probably" )));
+                    }
+                };
+                let mut des = union_index.into_deserializer();
                 let val: Result<V::Value, de::value::Error> = seed.deserialize(des);
                 Ok((val.unwrap(), self))
             },

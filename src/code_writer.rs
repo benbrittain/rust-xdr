@@ -237,7 +237,7 @@ impl<'a> CodeWriter<'a> {
     }
 
     pub fn enc_annotation(&mut self, name: &str) {
-        self.write_line(&format!("#[serde(rename(serialize = \"{}\"))]", name));
+        self.write_line(&format!("#[serde(rename = \"{}\")]", name));
     }
 
     pub fn field_decl(&mut self, name: &str, field_type: &str) {
