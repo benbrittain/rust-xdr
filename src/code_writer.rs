@@ -13,7 +13,7 @@ impl<'a> CodeWriter<'a> {
         }
     }
 
-    pub fn same_line<F>(&mut self, cb: F) where F : Fn(&mut CodeWriter) {
+    pub fn same_line<F>(&mut self, mut cb: F) where F : FnMut(&mut CodeWriter) {
         cb(&mut CodeWriter {
             writer: self.writer,
             indent: format!(""),
@@ -94,7 +94,7 @@ impl<'a> CodeWriter<'a> {
     }
 
     pub fn pub_struct<S : AsRef<str>, F>(&mut self, name: S, cb: F)
-        where F : Fn(&mut CodeWriter) {
+        where F : FnMut(&mut CodeWriter) {
             self.write_line("");
             self.write_line("#[derive(Serialize, Deserialize, PartialEq, Debug)]");
             self.expr_block(&format!("pub struct {}", name.as_ref()), "", cb);
@@ -225,8 +225,8 @@ impl<'a> CodeWriter<'a> {
     }
 
     // TODO generalized version should replace non _fn impl
-    pub fn pub_field_decl_fn<F>(&mut self, name: &str, cb: F)
-        where F : Fn(&mut CodeWriter) {
+    pub fn pub_field_decl_fn<F>(&mut self, name: &str, mut cb: F)
+        where F : FnMut(&mut CodeWriter) {
         self.write(&format!("pub {}: ", name));
         self.same_line(cb);
         self.raw_write(",\n");

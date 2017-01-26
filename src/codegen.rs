@@ -57,7 +57,10 @@ fn convert_basic_token(ident: &Token, is_type: bool) -> String {
     type_
 }
 
-fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
+fn write_struct(ident: Token,
+                fields: Vec<Token>,
+                mut tab: &mut CodegenState,
+                wr: &mut CodeWriter) -> bool {
     let id = match ident {
         Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
@@ -66,9 +69,22 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
         for field in fields.iter() {
             match *field {
                 Token::Decl{ty: ref field_type, id: ref field_id} => {
-                    wr.pub_field_decl(
-                        convert_basic_token(field_id, false).as_str(),
-                        convert_basic_token(field_type, true).as_str());
+                    match **field_type {
+                        Token::Union{decl: ref decl, ref cases, ref default} => {
+                            wr.pub_field_decl(
+                                convert_basic_token(field_id, false).as_str(),
+                                convert_basic_token(field_id, true).as_str());
+                            tab.hoist(&Token::UnionDef{
+                                id: Box::new(*field_id.clone()),
+                                decl: Box::new(*field_type.clone()),
+                            });
+                        },
+                        _ => {
+                            wr.pub_field_decl(
+                                convert_basic_token(field_id, false).as_str(),
+                                convert_basic_token(field_type, true).as_str());
+                        }
+                    }
                 },
                 Token::StringDecl{size: _, id: ref field_id} => {
                     wr.pub_field_decl(
@@ -80,10 +96,20 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
                         wr.var_vec(convert_basic_token(&ty, true).as_str());
                     });
                 },
-                      //  wr.pub_field_decl_fn(
-                      //  wr.var_vec(convert_basic_token(&ty, true).as_str());
-                      //  ty: Ident("example_uint_t"), id: Ident("my_vector_of_ints"), size: None 
+                Token::UnionDef{ref id, ref decl} => {
+                    match **decl {
+                        Token::Union{decl: ref decl, ref cases, ref default} => {
+                            write_union(&ident, decl, cases, default, &mut tab, wr);
+                        },
+                        _ => { println!("Unparsable") }
+                    };
+                },
+                Token::VarOpaqueDecl{ref id, ref size} => {
+                    wr.pub_field_decl(
+                        convert_basic_token(id, false).as_str(), "Vec<u8>");
+                },
                 _ => {
+                    println!("{:?}", field);
                     println!("UNIMPLEMENTED STRUCT FIELD");
                 }
             };
@@ -92,14 +118,14 @@ fn write_struct(ident: Token, fields: Vec<Token>, wr: &mut CodeWriter) -> bool {
     true
 }
 
-fn write_union(ident: Token,
+fn write_union(ident: &Token,
                ns_decl: &Box<Token>,
                cases: &Vec<Token>,
                default: &Box<Option<Token>>,
-               tab: &mut SymbolTable,
+               tab: &mut CodegenState,
                wr: &mut CodeWriter) -> bool {
 
-    let id = match ident {
+    let id = match *ident {
         Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
@@ -157,7 +183,7 @@ fn write_union(ident: Token,
 
 fn write_enum(ident: Token,
               fields: Vec<(Token, Token)>,
-              tab: &mut SymbolTable,
+              tab: &mut CodegenState,
               wr: &mut CodeWriter) -> bool {
 
     let id = match ident {
@@ -204,7 +230,6 @@ fn write_typedef(def: Token, wr: &mut CodeWriter) -> bool {
         },
         _ => {
             println!("UNIMPLEMENTED TYPEDEF");
-            println!("{:?}", def);
             return false
         }
     };
@@ -553,20 +578,32 @@ fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bo
 }
 
 #[derive(Debug)]
-struct SymbolTable<'a> {
+struct CodegenState<'a> {
     //table: HashMap<&'a str, User<'a>>,
     name: &'a str,
     table: HashMap<(Token, Token), Token>,
+    hoister: Vec<Token>,
 }
 
-impl<'a> SymbolTable<'a> {
-    fn new(name: &str) -> SymbolTable {
+impl<'a> CodegenState<'a> {
+    fn new(name: &str) -> CodegenState {
         let table = HashMap::new();
-        SymbolTable {
+        let hoister = Vec::new();
+        CodegenState {
             name: name,
             table: table,
+            hoister: hoister,
         }
     }
+
+    fn hoist(&mut self, tkn: &Token) {
+        self.hoister.push(tkn.clone())
+    }
+
+    fn get_hoisted(&mut self) -> Vec<Token> {
+        self.hoister.clone()
+    }
+
     fn add_symbol(&mut self, ns_tkn: &Token, id_tkn: &Token, val: &Token) -> Option<&Token> {
         let key = (ns_tkn.clone(), id_tkn.clone());
         if self.table.contains_key(&key) {
@@ -585,17 +622,9 @@ impl<'a> SymbolTable<'a> {
     }
 }
 
-pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> {
-    let bytes = source.into_bytes();
-    let not_yet_parsed = bytes.as_slice();
-    let tokens = parser::parse(not_yet_parsed, false);
 
-    let mut tab = SymbolTable::new("CodegenTable");
-
-    wr.write_header();
-
+fn codegen(wr: &mut CodeWriter, tokens: Option<Vec<Token>>, mut tab: &mut CodegenState) -> Result<&'static str, ()> {
     for token in tokens.unwrap() {
-    //    println!("{:?}", token);
         match token {
             // These three tokens are useless to us, just ignore them
             Token::Blank => {},
@@ -606,7 +635,7 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
             Token::UnionDef{id, decl} => {
                 match *decl {
                     Token::Union{decl: ref decl, ref cases, ref default} => {
-                        write_union(*id, decl, cases, default, &mut tab, wr);
+                        write_union(&*id, decl, cases, default, &mut tab, wr);
                     },
                     _ => { println!("Unparsable") }
                 };
@@ -614,7 +643,7 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
             Token::StructDef{id, decl} => {
                 match *decl {
                     Token::Struct(fields) => {
-                        write_struct(*id, fields, wr);
+                        write_struct(*id, fields, &mut tab, wr);
                     },
                     _ => { println!("Unparsable") }
                 };
@@ -653,6 +682,16 @@ pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> 
             }
 		}
 	}
-
     Ok("Complete codegen")
+}
+
+pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> {
+    let bytes = source.into_bytes();
+    let not_yet_parsed = bytes.as_slice();
+    let tokens = parser::parse(not_yet_parsed, false);
+
+    let mut tab = CodegenState::new("CodegenTable");
+    wr.write_header();
+    codegen(wr, tokens, &mut tab);
+    codegen(wr, Some(tab.get_hoisted()), &mut tab)
 }
