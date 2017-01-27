@@ -159,7 +159,6 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
     }
 
     fn serialize_tuple_struct( self, _name: &'static str, len: usize) -> EncoderResult<Self::SerializeTupleStruct> {
-        // println!("{}", _name);
         self.serialize_seq(Some(len))
     }
 
@@ -167,9 +166,7 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
         Err(EncoderError::Unknown(String::from("Not Implemented Tuple Elttv")))
     }
 
-    fn serialize_struct_variant(self, _name: &'static str, _variant_index: usize, variant: &'static str, len: usize) -> EncoderResult<Self::SerializeStructVariant> {
-        // println!("sv: {}", variant);
-        // println!("len: {}", len);
+    fn serialize_struct_variant(self, _name: &'static str, variant_idx: usize, variant: &'static str, len: usize) -> EncoderResult<Self::SerializeStructVariant> {
         let descr_idx = variant.parse::<u32>();
         match descr_idx {
             Ok(idx) => {
@@ -177,8 +174,9 @@ impl<'a, W: io::Write> ser::Serializer for &'a mut Serializer<W> {
                 Ok(Compound { ser: self, size: Some(idx as usize)})
             },
             Err(_) => {
-                println!("You probably modified a codegen'd file. stop that shit");
-                Err(EncoderError::Unknown(String::from("You probably modified a codegen'd file. stop that shit")))
+                self.serialize_u32((variant_idx + 1) as u32);
+                Ok(Compound { ser: self, size: Some(variant_idx + 1 as usize)})
+                //Err(EncoderError::Unknown(String::from("You probably modified a codegen'd file. stop that shit")))
             }
         }
     }

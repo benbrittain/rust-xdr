@@ -253,13 +253,16 @@ impl<'a, R: Read + 'a> de::EnumVisitor for VariantVisitor<'a, R> {
         match self.style {
             xdr_enum_type::Union => {
                 let enum_index: u32 = Deserialize::deserialize(&mut *self.de)?;
-                let ids = self.variants.iter().map(|x| x.parse::<u32>().unwrap()).position(|x| x == enum_index);
-                let union_index = match ids {
-                    Some(idx) => idx as u32,
-                    None => {
-                        return Err(EncoderError::Unknown(format!("Bad Index for Union, the codegen annotations are broken probably" )));
-                    }
-                };
+                let mut union_index: u32 = (self.variants.len() - 1) as u32;
+                if enum_index < self.variants.len() as u32 {
+                    let ids = self.variants.iter().map(|x| x.parse::<u32>().unwrap()).position(|x| x == enum_index);
+                    union_index = match ids {
+                        Some(idx) => idx as u32,
+                        None => {
+                            return Err(EncoderError::Unknown(format!("Bad Index for Union, the codegen annotations are broken probably" )));
+                        }
+                    };
+                }
                 let mut des = union_index.into_deserializer();
                 let val: Result<V::Value, de::value::Error> = seed.deserialize(des);
                 Ok((val.unwrap(), self))
