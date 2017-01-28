@@ -15,3 +15,4 @@ wanted to automatically generate the the whole service, except for the implement
 * CI setup
 * fix minor service codegen issues
 * better DB setup
+* Example service
