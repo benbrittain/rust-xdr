@@ -16,3 +16,4 @@ wanted to automatically generate the the whole service, except for the implement
 * fix minor service codegen issues
 * better DB setup
 * Example service
+* Better readme with instructions
