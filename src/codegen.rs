@@ -1,9 +1,8 @@
 use std::str;
-use parser;
-use parser::{Token, Type};
+use std::collections::HashMap;
 use code_writer::CodeWriter;
 use function_writer::*;
-use std::collections::HashMap;
+use parser::{self, Token, Type};
 
 // convert from snake_case to CamelCase
 pub fn rustify(underscores: &String) -> String {
@@ -111,7 +110,7 @@ fn write_struct(ident: Token,
                         Token::Union{decl: ref decl, ref cases, ref default} => {
                             write_union(&ident, decl, cases, default, &mut tab, wr);
                         },
-                        _ => { println!("Unparsable") }
+                        _ => { unreachable!() }
                     };
                 },
                 Token::VarOpaqueDecl{ref id, ref size} => {
@@ -143,7 +142,7 @@ fn write_union(ident: &Token,
         Token::Decl{ref ty, ref id} => {
             ty
         }
-        _=> { unreachable!()}
+        _=> { unreachable!() }
     };
 
     wr.pub_union_enum(id, |wr| {
@@ -672,7 +671,7 @@ fn codegen(wr: &mut CodeWriter, tokens: Option<Vec<Token>>, mut tab: &mut Codege
                     Token::Union{decl: ref decl, ref cases, ref default} => {
                         write_union(&*id, decl, cases, default, &mut tab, wr);
                     },
-                    _ => { println!("Unparsable") }
+                    _ => { unreachable!() }
                 };
             },
             Token::StructDef{id, decl} => {
@@ -680,7 +679,7 @@ fn codegen(wr: &mut CodeWriter, tokens: Option<Vec<Token>>, mut tab: &mut Codege
                     Token::Struct(fields) => {
                         write_struct(*id, fields, &mut tab, wr);
                     },
-                    _ => { println!("Unparsable") }
+                    _ => { unreachable!() }
                 };
             },
             Token::EnumDef{id, decl} => {
@@ -688,7 +687,7 @@ fn codegen(wr: &mut CodeWriter, tokens: Option<Vec<Token>>, mut tab: &mut Codege
                     Token::Enum(fields) => {
                         write_enum(*id, fields, &mut tab, wr);
                     },
-                    _ => { println!("Unparsable") }
+                    _ => { unreachable!() }
                 };
             },
             Token::TypeDef(def) => {
@@ -699,7 +698,7 @@ fn codegen(wr: &mut CodeWriter, tokens: Option<Vec<Token>>, mut tab: &mut Codege
                     Token::Ident(ref name_str) => {
                         write_program(name_str, &versions, wr);
                     },
-                    _ => { println!("Unparsable") }
+                    _ => { unreachable!() }
                 }
             },
             Token::Namespace{name, progs} => {
@@ -707,7 +706,7 @@ fn codegen(wr: &mut CodeWriter, tokens: Option<Vec<Token>>, mut tab: &mut Codege
                     Token::Ident(ref s) => {
                         write_namespace(s, &progs, wr);
                     },
-                    _ => { println!("Unparsable") }
+                    _ => { unreachable!() }
                 }
             }
 			_ => {
@@ -722,7 +721,7 @@ fn codegen(wr: &mut CodeWriter, tokens: Option<Vec<Token>>, mut tab: &mut Codege
 pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> {
     let bytes = source.into_bytes();
     let not_yet_parsed = bytes.as_slice();
-    let tokens = parser::parse(not_yet_parsed, false);
+    let tokens = parser::parse(not_yet_parsed, true);
 
     let mut tab = CodegenState::new("CodegenTable");
     wr.write_header();
