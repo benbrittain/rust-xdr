@@ -1,5 +1,5 @@
-# rust-xdr &emsp; [![Build Status](https://travis-ci.org/cavedweller/rust-xdr.svg?branch=master)]
-Converts XDR/RPC files into Rust Services (tokio/mio/serde/nom)
+# rust-xdr &emsp; [![Build Status](https://travis-ci.org/cavedweller/rust-xdr.svg?branch=master)](https://travis-ci.org/cavedweller/rust-xdr)
+**Converts XDR RPC definitions into Rust Services**
 
 ### Background
 Built primarily during OkCupid Hack Week 2017, the goal of the project was to Proof Of Concept standing up Rust services
@@ -7,12 +7,10 @@ that could easily interop with our existing C++ ones. Beyond building a typesafe
 wanted to automatically generate the the whole service, except for the implementation specific details for an RPC call. We succeded in our goal, but there are a few TODOs before a "release"
 
 ## TODO
-* Rename Project
-* Pull xdr_serde into it's own repo
+* make serde_xdr a stand-alone crate
 * serialization of Option<> types
 * boolean discrimant unions
 * Test Suite
-* CI setup
 * fix minor service codegen issues
 * better DB setup
 * Example service
