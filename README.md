@@ -1,4 +1,4 @@
-# xdrproto
+# rust-xdr &emsp; [![Build Status](https://travis-ci.org/cavedweller/rust-xdr.svg?branch=master)]
 Converts XDR/RPC files into Rust Services (tokio/mio/serde/nom)
 
 ### Background
