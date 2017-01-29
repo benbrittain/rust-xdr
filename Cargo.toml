@@ -8,12 +8,12 @@ name = "serde_xdr"
 path = "src/serde_xdr/lib.rs"
 
 [[bin]]
-name = "xdrust"
+name = "rust-xdr"
 path = "src/main.rs"
 
-[[bin]]
-name = "test"
-path = "src/test/test.rs"
+#[[bin]]
+#name = "test"
+#path = "src/test/test.rs"
 
 [dependencies]
 nom = "^2.0"
@@ -21,3 +21,8 @@ rustc-serialize = "0.3"
 serde = "0.9.1"
 serde_derive = "0.9.1"
 byteorder = "*"
+clap = "*"
+clippy = {version = "0.0.111", optional = true}
+
+[features]
+default = []
