@@ -495,7 +495,6 @@ named!(version<Token>,
   name: identifier              >>
         opt!(multispace)        >>
         tag!("{")               >>
-        opt!(multispace)        >>
  procs: many0!(rpc_proc)        >>
         opt!(multispace)        >>
         tag!("}")               >>
@@ -513,18 +512,17 @@ named!(version<Token>,
 
 named!(rpc_proc<Token>,
     do_parse!(
-   return_type: proc_type           >>
-                multispace          >>
+                multispace >>
+   return_type: type_specifier      >>
+                opt!(multispace)    >>
           name: identifier          >>
                 opt!(multispace)    >>
                 tag!("(")           >>
-                opt!(multispace)    >>
      arg_types: many1!(proc_type)   >>
                 opt!(multispace)    >>
                 tag!(")")           >>
                 opt!(multispace)    >>
             id: numeric_id          >>
-                opt!(multispace)    >>
                 (Token::Proc {
                     return_type: Box::new(return_type),
                     name: Box::new(name),
