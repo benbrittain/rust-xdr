@@ -15,3 +15,7 @@ wanted to automatically generate the the whole service, except for the implement
 * better DB setup
 * Example service
 * Better readme with instructions
+
+### Authors
+* [Brendon Scheinman](https://github.com/bscheinman)
+* [Ben Brittain](https://github.com/cavedweller)
