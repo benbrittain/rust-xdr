@@ -61,26 +61,26 @@ fn main() {
     }
 
     let mut types_buffer = Vec::new();
-    let mut proto_buffer = Vec::new();
     let mut codec_buffer = Vec::new();
+    let mut service_buffer = Vec::new();
     {
         let mut types_wr = CodeWriter::new(&mut types_buffer);
-        let mut proto_wr = CodeWriter::new(&mut proto_buffer);
         let mut codec_wr = CodeWriter::new(&mut codec_buffer);
+        let mut service_wr = CodeWriter::new(&mut service_buffer);
 
-        let mut cg = CodeGen::new(&mut types_wr, &mut proto_wr, &mut codec_wr);
+        let mut cg = CodeGen::new(&mut types_wr, &mut codec_wr, &mut service_wr);
         cg.compile(source, false).expect("XDR->Rust codegen failed");
     }
 
-    let mut types_fout = File::create(out_dir.clone() + "/types.rs")
+    let mut types_fout = File::create(out_dir.clone() + "/prot.rs")
         .expect("error creating types file");
     let _ = types_fout.write(types_buffer.as_ref());
 
-    let mut codec_fout = File::create(out_dir.clone() + "/codec.rs")
-        .expect("error creating the codec file");
-    let _ = codec_fout.write(codec_buffer.as_ref());
+    let mut service_fout = File::create(out_dir.clone() + "/service.rs")
+        .expect("error creating the service file");
+    let _ = service_fout.write(service_buffer.as_ref());
 
-    let mut proto_fout = File::create(out_dir.clone() + "/protocol.rs")
-        .expect("error creating the protocol file");
-    let _ = proto_fout.write(proto_buffer.as_ref());
+    let mut codec_fout = File::create(out_dir.clone() + "/codec.rs")
+        .expect("error creating the codeccol file");
+    let _ = codec_fout.write(codec_buffer.as_ref());
 }

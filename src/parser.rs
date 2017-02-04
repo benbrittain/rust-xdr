@@ -261,16 +261,21 @@ named!(type_specifier<Token>,
             tag!("u_int64_t") >>
             multispace >>
             (Token::Type(Type::Uhyper))
-            ) |
+        ) |
         do_parse!(
             tag!("u_int64_t") >>
             multispace >>
             (Token::Type(Type::Hyper))
-            ) |
+        ) |
         do_parse!(
             tag!("unsigned") >>
             multispace >>
             (Token::Type(Type::Uint))
+        ) |
+        do_parse!(
+            tag!("void")  >>
+            multispace    >>
+            (Token::VoidDecl)
         ) |
         // There are standard XDR again!
         enum_type_specifier |
@@ -546,20 +551,19 @@ named!(numeric_id<&[u8], Token>,
 named!(proc_type<&[u8], Token>,
     alt!(
         do_parse!(
-            opt!(multispace)    >>
             tag!("void")        >>
-            //opt!(multispace)    >>
+            opt!(multispace)    >>
             opt!(tag!(","))     >>
             (Token::VoidDecl)
         ) |
         do_parse!(
             opt!(multispace)    >>
-        ty: type_specifier      >>
-            //opt!(multispace)    >>
+            ty: type_specifier      >>
+            opt!(multispace)    >>
             opt!(tag!(","))     >>
             (ty)
         )
-   )
+    )
 );
 
 named!(declaration<Token>,
@@ -638,6 +642,11 @@ named!(declaration<Token>,
             })
         ) |
         do_parse!(
+            tag!("void")        >>
+            opt!(multispace)    >>
+            (Token::VoidDecl)
+        ) |
+        do_parse!(
         ty: type_specifier      >>
             opt!(multispace)    >>
         id: identifier          >>
@@ -645,11 +654,6 @@ named!(declaration<Token>,
                 ty: Box::new(ty),
                 id: Box::new(id)
             })
-        ) |
-        do_parse!(
-            tag!("void")        >>
-            opt!(multispace)    >>
-            (Token::VoidDecl)
         )
     )
 );

@@ -226,10 +226,9 @@ fn write_enum(ident: &Token,
             match *field_val {
                 Token::Blank => {
                     // Nothing to lookup here
-                    wr.enum_decl(convert_basic_token(field_id, false).as_str(), "");
+                    wr.enum_decl(convert_basic_token(field_id, true).as_str(), "");
                 }
                 _ => {
-                    //println!("enum:  {:?} {:?} {:?}", ident, field_id, field_val);
                     tab.add_symbol(&ident, field_id, field_val);
                     wr.enum_decl(
                         convert_basic_token(field_id, true).as_str(),
@@ -299,11 +298,7 @@ fn write_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
     wr.pub_enum(&format!("{}ResponseV{}", prog_name, ver_num), |wr| {
         for ptoken in procs {
             let (return_type, name, arg_types, id) = match *ptoken {
-                Token::Proc{
-                    ref return_type,
-                    ref name,
-                    ref arg_types,
-                    ref id} => {
+                Token::Proc {ref return_type, ref name, ref arg_types, ref id} => {
                     (return_type, name, arg_types, id)
                 }, _ => { return; }
             };
@@ -335,15 +330,13 @@ fn write_service_proc(prog_name: &String, ver_num: i64, proc_name: &Token,
             ver_num));
         wr.comma_fields(&arg_names);
         wr.raw_write(")");
-
         let has_return = match *ret_type {
             Token::VoidDecl => false,
             _ => true
         };
-
         wrap_proc_result(prog_name, ver_num, proc_name_str.as_str(),
             has_return, wr);
-        wr.raw_write("\n");
+        wr.raw_write(".boxed()\n");
     });
 }
 
@@ -354,10 +347,13 @@ fn write_service_version(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
             &version_fields, |wr| {
         wr.let_match_block("res", "data", |wr| {
             for ptoken in procs {
-                if let Token::Proc{ref return_type, ref name, ref arg_types,
-                        ref id} = *ptoken {
-                    write_service_proc(prog_name, ver_num, (*name).as_ref(),
-                        &(**return_type), arg_types, wr);
+                if let Token::Proc{ref return_type, ref name, ref arg_types, ref id} = *ptoken {
+                    write_service_proc(prog_name,
+                                       ver_num,
+                                       (*name).as_ref(),
+                                       &(**return_type),
+                                       arg_types,
+                                       wr);
                 }
             }
             decoder_miss_future("procedure", wr);
@@ -371,10 +367,10 @@ fn write_service(prog_name: &String, versions: &Vec<Token>,
     let rust_prog_name = rustify(prog_name);
     wr.program_version_service(&format!("{}Service", rust_prog_name), |wr| {
         wr.alias("Request", |wr| {
-            wr.raw_write(&format!("{}Request", rust_prog_name));
+            wr.raw_write(&format!("xdr_rpc::XdrRequest<{}Request", rust_prog_name));
         });
         wr.alias("Response", |wr| {
-            wr.raw_write(&format!("{}Response", rust_prog_name));
+            wr.raw_write(&format!("xdr_rpc::XdrResponse<{}Response>", rust_prog_name));
         });
         wr.alias("Error", |wr| {
             wr.raw_write("io::Error");
@@ -383,7 +379,8 @@ fn write_service(prog_name: &String, versions: &Vec<Token>,
             wr.raw_write("BoxFuture<Self::Response, Self::Error>");
         });
         wr.dispatch_function(|wr| {
-            wr.match_block("req", |wr| {
+            wr.write_line("let xid = req.xid;");
+            wr.match_block("req.val", |wr| {
                 for vtoken in versions {
                     if let Token::Version{ref name, ref id, ref procs} = *vtoken {
                         if let Token::Constant(id_num) = **id {
@@ -440,12 +437,12 @@ fn write_proc_decoder(prog_name: &String, ver_num: i64, proc_name: &Token,
                       ret_type: &Token, arg_types: &Vec<Token>,
                       wr: &mut CodeWriter) {
     let proc_decoder_fn = format!("{}_decode_v{}_{}",
-        prog_name.to_lowercase(), ver_num,
-        convert_basic_token(proc_name, false).as_str().to_lowercase());
+                                  prog_name.to_lowercase(),
+                                  ver_num,
+                                  convert_basic_token(proc_name, false).as_str().to_lowercase());
 
     proc_decoder(rustify(prog_name).as_str(), &proc_decoder_fn, ver_num, wr, |wr| {
         let mut i = 0u32;
-
         for atoken in arg_types {
             match *atoken {
                 Token::VoidDecl => {},
@@ -506,24 +503,13 @@ fn write_version_decoder(prog_name: &String, ver_num: i64, procs: &Vec<Token>,
 fn write_decoder(prog_name: &String, prog_id: i64, versions: &Vec<Token>,
                  wr: &mut CodeWriter) -> bool {
     let prog_decoder_fn = format!("{}_decode", prog_name.to_lowercase());
-
-    /*
-    top_decoder(rustify(prog_name).as_str(), wr, |wr| {
-        wr.match_block("header.program", |wr| {
-            wr.match_option(&format!("{}u32", prog_id), &Vec::<String>::new(), |wr| {
-                prog_decoder_call(&prog_decoder_fn, wr);
-            });
-            decoder_miss("program", wr);
-        });
-    });
-    */
-
     prog_decoder(rustify(prog_name).as_str(), &prog_decoder_fn, wr, |wr| {
         wr.match_block("version", |wr| {
             for vtoken in versions {
                 if let Token::Version{ref name, ref id, ref procs} = *vtoken {
                     if let Token::Constant(id_num) = **id {
-                        wr.match_option(&format!("{}u32", id_num),
+                        wr.match_option(
+                            &format!("{}u32", id_num),
                             &Vec::<String>::new(), |wr| {
                             version_decoder_call(&format!("{}_v{}",
                                 &prog_decoder_fn, id_num), wr);
@@ -590,6 +576,32 @@ fn write_encoder(prog_name: &String, versions: &Vec<Token>,
     true
 }
 
+fn write_codec(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+    wr.namespace(name, |wr| {
+        wr.write_line("use super::*;");
+        for ptoken in progs {
+            if let Token::Program{ref name, ref id, ref versions} = *ptoken {
+                if let Token::Ident(ref name_str) = **name{
+                    if let Token::Constant(id_num) = **id {
+                        let prog_decoder_fn = format!("{}_decode", name_str.to_lowercase());
+                        top_decoder(rustify(name_str).as_str(), wr, |wr| {
+                            wr.match_block("header.program", |wr| {
+                                wr.match_option(&format!("{}u32", id_num), &Vec::<String>::new(), |wr| {
+                                    prog_decoder_call(&prog_decoder_fn, wr);
+                                });
+                                decoder_miss("program", wr);
+                            });
+                        });
+                    }
+                    ()
+                }
+            }
+        }
+    });
+
+    true
+}
+
 fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
     wr.namespace(name, |wr| {
         wr.write_line("use super::*;");
@@ -597,7 +609,7 @@ fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bo
             if let Token::Program{ref name, ref id, ref versions} = *ptoken {
                 if let Token::Ident(ref name_str) = **name{
                     write_program(name_str, &versions, wr);
-                    write_service(name_str, &versions, wr);
+    //                write_service(name_str, &versions, wr);
                     if let Token::Constant(id_num) = **id {
                         write_decoder(name_str, id_num, versions, wr);
                         write_encoder(name_str, versions, wr);
@@ -641,8 +653,6 @@ impl<'a> CodegenState<'a> {
     fn add_symbol(&mut self, ns_tkn: &Token, id_tkn: &Token, val: &Token) -> Option<&Token> {
         let key = (ns_tkn.clone(), id_tkn.clone());
         if self.table.contains_key(&key) {
-            // Don't overwrite symbol, right?
-            //println!("Table already contains the token");
             self.table.get(&key)
         } else {
             self.table.insert(key, val.clone());
@@ -663,20 +673,20 @@ impl<'a> CodegenState<'a> {
 
 pub struct CodeGen<'a: 'b, 'b: 'c, 'c> {
 	types_wr: &'c mut CodeWriter<'a>,
-	proto_wr: &'c mut CodeWriter<'b>,
-    codec_wr: &'c mut CodeWriter<'c>,
+	codec_wr: &'c mut CodeWriter<'b>,
+    service_wr: &'c mut CodeWriter<'c>,
     tokens: Option<Vec<Token>>,
     state: CodegenState<'c>,
 }
 
 impl<'a, 'b, 'c> CodeGen<'a, 'b, 'c> {
     pub fn new(tw: &'c mut CodeWriter<'a>,
-			   pw: &'c mut CodeWriter<'b>,
-			   cw: &'c mut CodeWriter<'c>) -> CodeGen<'a, 'b, 'c> {
+			   cw: &'c mut CodeWriter<'b>,
+			   sw: &'c mut CodeWriter<'c>) -> CodeGen<'a, 'b, 'c> {
         CodeGen {
 			types_wr: tw,
-			proto_wr: pw,
 			codec_wr: cw,
+			service_wr: sw,
             tokens: None,
             state: CodegenState::new("CodegenTable"),
 		}
@@ -690,8 +700,11 @@ impl<'a, 'b, 'c> CodeGen<'a, 'b, 'c> {
             Ok("Dumped parse tree")
         } else {
             self.tokens = parser::parse(not_yet_parsed, dump_parse);
-            self.types_wr.write_types_header();
+            self.types_wr.write_proto_header();
+            self.service_wr.write_types_header();
+
             self.codegen_all();
+
             //while !self.state.hoister.is_empty() {
             //    self.codegen_all();
             //}
@@ -738,7 +751,7 @@ impl<'a, 'b, 'c> CodeGen<'a, 'b, 'c> {
                 Token::Program{ref name, ref id, ref versions} => {
                     match **name {
                         Token::Ident(ref name_str) => {
-                            write_program(name_str, &versions, self.codec_wr);
+                            write_program(name_str, &versions, self.types_wr);
                         },
                         _ => { unreachable!() }
                     }
@@ -746,7 +759,7 @@ impl<'a, 'b, 'c> CodeGen<'a, 'b, 'c> {
                 Token::Namespace{ref name, ref progs} => {
                     match **name {
                         Token::Ident(ref s) => {
-                            write_namespace(s, &progs, self.codec_wr);
+                            write_namespace(s, &progs, self.types_wr);
                         },
                         _ => { unreachable!() }
                     }
