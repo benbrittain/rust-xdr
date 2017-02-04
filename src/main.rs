@@ -22,6 +22,7 @@ mod code_writer;
 mod function_writer;
 
 use code_writer::CodeWriter;
+use codegen::CodeGen;
 
 fn main() {
     let app  = App::new("rust-xdr")
@@ -41,30 +42,45 @@ fn main() {
              .multiple(true)
              .takes_value(true)
              .required(false))
-        .arg(Arg::with_name("output directory")
+        .arg(Arg::with_name("output")
              .help("Output directory")
              .long("output")
              .short("o")
+             .multiple(false)
              .takes_value(true)
              .required(true))
         .get_matches();
 
     let files: Vec<&str> = app.values_of("input").unwrap().collect();
+    let out_dir: String = app.values_of("output").unwrap().collect();
 
     let mut source = String::new();
     for file in files.iter() {
-        println!("{}", file);
         let mut fin = File::open(file).expect("input file does not exist.");
         let _ = fin.read_to_string(&mut source);
     }
 
-    let mut buffer= Vec::new();
+    let mut types_buffer = Vec::new();
+    let mut proto_buffer = Vec::new();
+    let mut codec_buffer = Vec::new();
     {
-        let mut wr = CodeWriter::new(&mut buffer);
-        codegen::compile(&mut wr, source).expect("XDR->Rust codegen failed");
+        let mut types_wr = CodeWriter::new(&mut types_buffer);
+        let mut proto_wr = CodeWriter::new(&mut proto_buffer);
+        let mut codec_wr = CodeWriter::new(&mut codec_buffer);
+
+        let mut cg = CodeGen::new(&mut types_wr, &mut proto_wr, &mut codec_wr);
+        cg.compile(source, false).expect("XDR->Rust codegen failed");
     }
 
-    io::stdout().write(buffer.as_ref());
-    //let mut fout = File::create(args.arg_output).expect("error creating the module.");
-    //let _ = fout.write(buffer.as_ref());
+    let mut types_fout = File::create(out_dir.clone() + "/types.rs")
+        .expect("error creating types file");
+    let _ = types_fout.write(types_buffer.as_ref());
+
+    let mut codec_fout = File::create(out_dir.clone() + "/codec.rs")
+        .expect("error creating the codec file");
+    let _ = codec_fout.write(codec_buffer.as_ref());
+
+    let mut proto_fout = File::create(out_dir.clone() + "/protocol.rs")
+        .expect("error creating the protocol file");
+    let _ = proto_fout.write(proto_buffer.as_ref());
 }

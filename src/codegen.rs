@@ -57,11 +57,11 @@ fn convert_basic_token(ident: &Token, is_type: bool) -> String {
     type_
 }
 
-fn write_struct(ident: Token,
-                fields: Vec<Token>,
+fn write_struct(ident: &Box<Token>,
+                fields: &Vec<Token>,
                 mut tab: &mut CodegenState,
                 wr: &mut CodeWriter) -> bool {
-    let id = match ident {
+    let id = match **ident {
         Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
@@ -212,12 +212,12 @@ fn write_union(ident: &Token,
     true
 }
 
-fn write_enum(ident: Token,
-              fields: Vec<(Token, Token)>,
+fn write_enum(ident: &Token,
+              fields: &Vec<(Token, Token)>,
               tab: &mut CodegenState,
               wr: &mut CodeWriter) -> bool {
 
-    let id = match ident {
+    let id = match *ident {
         Token::Ident(ref id) => { rustify(id) },
         _ => { return false }
     };
@@ -241,20 +241,20 @@ fn write_enum(ident: Token,
     true
 }
 
-fn write_typedef(def: Token, wr: &mut CodeWriter) -> bool {
-    match def {
-        Token::VarArrayDecl{ty, id, size} => {
+fn write_typedef(def: &Box<Token>, wr: &mut CodeWriter) -> bool {
+    match **def {
+        Token::VarArrayDecl{ref ty, ref id, ref size} => {
             wr.pub_alias(convert_basic_token(&id, true), |wr| {
                 wr.var_vec(convert_basic_token(&ty, true).as_str());
             });
         },
-        Token::StringDecl{id, size} => {
+        Token::StringDecl{ref id, ref size} => {
             wr.pub_alias(convert_basic_token(&id, true), |wr| {
                 // TODO Size this somehow. maybe make these &[u8]
                 wr.write(String::from("String"));
             });
         },
-        Token::Decl{ty, id} => {
+        Token::Decl{ref ty, ref id} => {
             wr.pub_alias(convert_basic_token(&id, true), |wr| {
                 wr.write(convert_basic_token(&ty, true).as_str());
             });
@@ -657,76 +657,106 @@ impl<'a> CodegenState<'a> {
 }
 
 
-fn codegen(wr: &mut CodeWriter, tokens: Option<Vec<Token>>, mut tab: &mut CodegenState) -> Result<&'static str, ()> {
-    for token in tokens.unwrap() {
-        match token {
-            // These three tokens are useless to us, just ignore them
-            Token::Blank => {},
-            Token::Comment(_) => {},
-            Token::CodeSnippet(_) => {}, // TODO maybe do something special with this
 
-            // These tokens are incredibly useful
-            Token::UnionDef{id, decl} => {
-                match *decl {
-                    Token::Union{decl: ref decl, ref cases, ref default} => {
-                        write_union(&*id, decl, cases, default, &mut tab, wr);
-                    },
-                    _ => { unreachable!() }
-                };
-            },
-            Token::StructDef{id, decl} => {
-                match *decl {
-                    Token::Struct(fields) => {
-                        write_struct(*id, fields, &mut tab, wr);
-                    },
-                    _ => { unreachable!() }
-                };
-            },
-            Token::EnumDef{id, decl} => {
-                match *decl {
-                    Token::Enum(fields) => {
-                        write_enum(*id, fields, &mut tab, wr);
-                    },
-                    _ => { unreachable!() }
-                };
-            },
-            Token::TypeDef(def) => {
-                write_typedef(*def, wr);
-            },
-            Token::Program{name, id, versions} => {
-                match *name {
-                    Token::Ident(ref name_str) => {
-                        write_program(name_str, &versions, wr);
-                    },
-                    _ => { unreachable!() }
-                }
-            },
-            Token::Namespace{name, progs} => {
-                match *name {
-                    Token::Ident(ref s) => {
-                        write_namespace(s, &progs, wr);
-                    },
-                    _ => { unreachable!() }
-                }
-            }
-			_ => {
-                println!("Codegen isn't supported for this token yet");
-                break;
-            }
-		}
-	}
-    Ok("Complete codegen")
+//    codegen(wr, tokens, &mut tab);
+//    codegen(wr, Some(tab.get_hoisted()), &mut tab)
+
+pub struct CodeGen<'a: 'b, 'b: 'c, 'c> {
+	types_wr: &'c mut CodeWriter<'a>,
+	proto_wr: &'c mut CodeWriter<'b>,
+    codec_wr: &'c mut CodeWriter<'c>,
+    tokens: Option<Vec<Token>>,
+    state: CodegenState<'c>,
 }
 
-pub fn compile(wr: &mut CodeWriter, source: String) -> Result<&'static str, ()> {
-    let bytes = source.into_bytes();
-    let not_yet_parsed = bytes.as_slice();
-    let tokens = parser::parse(not_yet_parsed, true);
+impl<'a, 'b, 'c> CodeGen<'a, 'b, 'c> {
+    pub fn new(tw: &'c mut CodeWriter<'a>,
+			   pw: &'c mut CodeWriter<'b>,
+			   cw: &'c mut CodeWriter<'c>) -> CodeGen<'a, 'b, 'c> {
+        CodeGen {
+			types_wr: tw,
+			proto_wr: pw,
+			codec_wr: cw,
+            tokens: None,
+            state: CodegenState::new("CodegenTable"),
+		}
+    }
 
-    let mut tab = CodegenState::new("CodegenTable");
-    wr.write_header();
+    pub fn compile(&mut self, source: String, dump_parse: bool) -> Result<&'static str, ()> {
+        let bytes = source.into_bytes();
+        let not_yet_parsed = bytes.as_slice();
+        if dump_parse {
+            parser::parse(not_yet_parsed, dump_parse);
+            Ok("Dumped parse tree")
+        } else {
+            self.tokens = parser::parse(not_yet_parsed, dump_parse);
+            self.types_wr.write_types_header();
+            self.codegen_all();
+            //while !self.state.hoister.is_empty() {
+            //    self.codegen_all();
+            //}
+            Ok("Complete codegen")
+        }
+    }
 
-    // TODO make this cycle until tab.hoisted is empty
-    codegen(wr, tokens, &mut tab);
-    codegen(wr, Some(tab.get_hoisted()), &mut tab)
+    fn codegen_all(&mut self) -> Result<&'static str, ()> {
+        for token in self.tokens.as_ref().unwrap() {
+            match *token {
+                // These three tokens are useless to us, just ignore them
+                Token::Blank => {},
+                Token::Comment(_) => {},
+                Token::CodeSnippet(_) => {}, // TODO maybe do something special with this
+
+                // These tokens are incredibly useful
+                Token::UnionDef{ref id, ref decl} => {
+                    match **decl {
+                        Token::Union{decl: ref decl, ref cases, ref default} => {
+                            write_union(&*id, decl, cases, default, &mut self.state, self.types_wr);
+                        },
+                        _ => { unreachable!() }
+                    };
+                },
+                Token::StructDef{ref id, ref decl} => {
+                    match **decl {
+                        Token::Struct(ref fields) => {
+                            write_struct(id, fields, &mut self.state, self.types_wr);
+                        },
+                        _ => { unreachable!() }
+                    };
+                },
+                Token::EnumDef{ref id, ref decl} => {
+                    match **decl {
+                        Token::Enum(ref fields) => {
+                            write_enum(id, fields, &mut self.state, self.types_wr);
+                        },
+                        _ => { unreachable!() }
+                    };
+                },
+                Token::TypeDef(ref def) => {
+                    write_typedef(def, self.types_wr);
+                },
+                Token::Program{ref name, ref id, ref versions} => {
+                    match **name {
+                        Token::Ident(ref name_str) => {
+                            write_program(name_str, &versions, self.codec_wr);
+                        },
+                        _ => { unreachable!() }
+                    }
+                },
+                Token::Namespace{ref name, ref progs} => {
+                    match **name {
+                        Token::Ident(ref s) => {
+                            write_namespace(s, &progs, self.codec_wr);
+                        },
+                        _ => { unreachable!() }
+                    }
+                }
+                _ => {
+                    println!("Codegen isn't supported for this token yet");
+                    break;
+                }
+            }
+        }
+        Ok("Complete codegen")
+    }
 }
