@@ -20,12 +20,11 @@ if you are not codegening off a XDR file (which generates the annotations for yo
 See the `/examples` directory.
 
 ## TODO
+* fix imports/module generation
 * make serde_xdr a stand-alone crate
 * serialization of Option<> types
 * boolean discrimant unions
 * Test Suite
-* fix minor service codegen issues
-* better DB setup (might be a rust ecosystem problem)
 
 ## Contacts
 Please file a github issue if you experience any problems
