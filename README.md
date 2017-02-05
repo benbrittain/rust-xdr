@@ -36,7 +36,7 @@ Built primarily during OkCupid Hack Week 2017, the goal of the project was to Pr
 that could easily interop with our existing C++ ones. Beyond building a typesafe (de)serialization library, we also
 wanted to automatically generate the the whole service, except for the implementation specific details for an RPC call.
 
-## Timeline
+## Future Work
 * Make serde_xdr a stand-alone crate
 * Serialization of Option<> types as discriminant unions
 * Prevent consumption of bytes in too small of packets
