@@ -25,7 +25,11 @@ See the `/examples` directory.
 * `/examples/xdr_protocol_example/` shows how the XDR protocol implementation is primarily codegenned off
 the RPC XDR specification.
 * `/examples/rust_xdr_service` shows how to implement a service. The main.rs & service.rs are hand
-  written files. `/examples/rust_xdr_service/xdrgen` is the output directory of `xdrgen`.
+  written files. `/examples/rust_xdr_service/xdrgen` is the output directory of `xdrgen`.  
+
+  ```
+  cargo run --bin rust-xdr -- -i examples/example_prot.v --output examples/service_example/xdrgen
+  ```
 
 ## Background
 Built primarily during OkCupid Hack Week 2017, the goal of the project was to Proof Of Concept standing up Rust services
@@ -47,3 +51,6 @@ Please file a github issue if you experience any problems
 * [Ben Brittain](https://github.com/cavedweller)
 * [Brendon Scheinman](https://github.com/bscheinman)
 
+## Specifications Implemented
+* [XDR - RFC4506](https://tools.ietf.org/html/rfc4506.html)
+* [RPC v2 - RFC1831](https://tools.ietf.org/html/rfc1831.html)
