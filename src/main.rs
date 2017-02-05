@@ -73,14 +73,14 @@ fn main() {
     }
 
     let mut types_fout = File::create(out_dir.clone() + "/prot.rs")
-        .expect("error creating types file");
+        .expect("error creating prot.rs");
     let _ = types_fout.write(types_buffer.as_ref());
 
     let mut service_fout = File::create(out_dir.clone() + "/service.rs")
-        .expect("error creating the service file");
+        .expect("error creating service.rs");
     let _ = service_fout.write(service_buffer.as_ref());
 
     let mut codec_fout = File::create(out_dir.clone() + "/codec.rs")
-        .expect("error creating the codeccol file");
+        .expect("error creating codec.rs");
     let _ = codec_fout.write(codec_buffer.as_ref());
 }

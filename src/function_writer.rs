@@ -1,5 +1,26 @@
 use code_writer::CodeWriter;
 
+pub fn proto_fn<S: AsRef<str>>(codec: S, app_codec: S, wr: &mut CodeWriter) {
+    wr.expr_block("fn bind_transport(&self, io: T) -> Self::BindTransport", "", |wr| {
+        wr.write_line(format!("Ok(io.framed({}::new({})))", codec.as_ref(), app_codec.as_ref()));
+    });
+}
+
+pub fn codec_fns<S: AsRef<str>>(prog_name: S, wr: &mut CodeWriter) {
+    wr.expr_block("fn decode(&mut self, buf: &mut EasyBuf) -> io::Result<Option<Self::In>>", "", |wr| {
+        wr.write_line("unreachable!()");
+    });
+    wr.expr_block("fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()>", "", |wr| {
+        wr.write_line("rpc::encode(msg, buf)");
+    });
+}
+
+pub fn app_codec_fn<S: AsRef<str>>(prog_name: S, wr: &mut CodeWriter) {
+    wr.expr_block("fn app_decode(&mut self, prog: u32, version: u32, procedure: u32, buf: &mut EasyBuf) -> io::Result<Option<Self::In>>", "", |wr| {
+        wr.write_line("rpc::experimentdbd_prog_decode(prog, version, procedure, buf)");
+    });
+}
+
 pub fn top_decoder<S: AsRef<str>, F>(prog_name: S, wr: &mut CodeWriter, cb: F)
             where F : Fn(&mut CodeWriter) {
     wr.expr_block(
@@ -197,7 +218,37 @@ pub fn wrap_proc_result<S1: AsRef<str>, S2: AsRef<str>>(prog_name: S1,
 pub fn wrap_version_result<S: AsRef<str>>(prog_name: S, ver_num: i64,
                                           wr: &mut CodeWriter) {
     wr.write_line(
-&format!(r###"res.map(|r| {{
-            {}Response::V{}(r)
+&format!(r###"res.map(move |r| {{
+            xdr_rpc::XdrResponse{{ xid: xid, val: {}Response::V{}(r) }}
           }}).boxed()"###, prog_name.as_ref(), ver_num));
 }
+//use std::io;
+//use std::result;
+//use tokio_core::io::{Codec, EasyBuf};
+//
+//use xdrgen::experiment_prot::rpc;
+//use xdrgen::xdr_codec::{AppCodec, XdrCodec};
+//
+//pub struct ExperimentdbdAppCodec;
+//
+//impl Codec for ExperimentdbdAppCodec {
+//    type In = rpc::ExperimentdbdProgRequest;
+//    type Out = rpc::ExperimentdbdProgResponse;
+//
+//    fn decode(&mut self, buf: &mut EasyBuf) -> io::Result<Option<Self::In>> {
+//        unreachable!()
+//    }
+//
+//    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
+//        rpc::encode(msg, buf)
+//    }
+//}
+//
+//impl AppCodec for ExperimentdbdAppCodec {
+//    fn app_decode(&mut self, prog: u32, version: u32, procedure: u32,
+//            buf: &mut EasyBuf) -> io::Result<Option<Self::In>> {
+//        rpc::experimentdbd_prog_decode(prog, version, procedure, buf)
+//    }
+//}
+//
+//pub type ExperimentdbdCodec = XdrCodec<ExperimentdbdAppCodec>;

@@ -367,7 +367,7 @@ fn write_service(prog_name: &String, versions: &Vec<Token>,
     let rust_prog_name = rustify(prog_name);
     wr.program_version_service(&format!("{}Service", rust_prog_name), |wr| {
         wr.alias("Request", |wr| {
-            wr.raw_write(&format!("xdr_rpc::XdrRequest<{}Request", rust_prog_name));
+            wr.raw_write(&format!("xdr_rpc::XdrRequest<{}Request>", rust_prog_name));
         });
         wr.alias("Response", |wr| {
             wr.raw_write(&format!("xdr_rpc::XdrResponse<{}Response>", rust_prog_name));
@@ -411,6 +411,54 @@ fn write_version_set(prog_name: &String, versions: &Vec<Token>,
         }
     });
 
+    true
+}
+
+fn write_codec(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+    let prog_name = rustify(prog_name);
+
+    // TODO more rigourous way of getting these vals
+    let app_codec = prog_name.replace("Prog", "AppCodec");
+    let codec     = prog_name.replace("Prog", "Codec");
+    let protocol  = prog_name.replace("Prog", "Protocol");
+    let app_req   = prog_name.replace("Prog", "ProgRequest");
+    let app_res   = prog_name.replace("Prog", "ProgResponse");
+
+    wr.pub_struct(app_codec.clone(), |wr| {});
+    wr.impl_("", "Codec", app_codec.as_str(), |wr| {
+        wr.alias_impl("", "In", |wr| {
+            wr.write(app_req.as_str());
+        });
+        wr.alias_impl("", "Out", |wr| {
+            wr.write(app_res.as_str());
+        });
+        codec_fns(prog_name.as_str(), wr);
+    });
+
+    wr.impl_("", "app_codec", app_codec.as_str(), |wr| {
+        app_codec_fn(prog_name.as_str(), wr);
+    });
+
+    wr.pub_alias(codec.as_str(), |wr| {
+        wr.write(format!("XdrCodec<{}>", app_codec.as_str()));
+    });
+
+    wr.pub_struct(protocol.clone(), |wr| {});
+    wr.impl_("<T: Io + 'static>", "ServerProto<T>", protocol.as_str(), |wr| {
+        wr.alias_impl("", "Request", |wr| {
+            wr.write(format!("xdr_rpc::XdrRequest<{}>", app_req.as_str()));
+        });
+        wr.alias_impl("", "Response", |wr| {
+            wr.write(format!("xdr_rpc::XdrResponse<{}>", app_res.as_str()));
+        });
+        wr.alias_impl("", "Transport", |wr| {
+            wr.write(format!("Framed<T, {}>", codec.as_str()));
+        });
+        wr.alias_impl("", "BindTransport", |wr| {
+            wr.write("io::Result<Self::Transport>");
+        });
+        proto_fn(codec.as_str(), app_codec.as_str(), wr);
+    });
     true
 }
 
@@ -576,52 +624,51 @@ fn write_encoder(prog_name: &String, versions: &Vec<Token>,
     true
 }
 
-fn write_codec(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
-    wr.namespace(name, |wr| {
-        wr.write_line("use super::*;");
-        for ptoken in progs {
-            if let Token::Program{ref name, ref id, ref versions} = *ptoken {
-                if let Token::Ident(ref name_str) = **name{
-                    if let Token::Constant(id_num) = **id {
-                        let prog_decoder_fn = format!("{}_decode", name_str.to_lowercase());
-                        top_decoder(rustify(name_str).as_str(), wr, |wr| {
-                            wr.match_block("header.program", |wr| {
-                                wr.match_option(&format!("{}u32", id_num), &Vec::<String>::new(), |wr| {
-                                    prog_decoder_call(&prog_decoder_fn, wr);
-                                });
-                                decoder_miss("program", wr);
-                            });
-                        });
-                    }
-                    ()
-                }
-            }
-        }
-    });
+//fn write_codec(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+//   // wr.namespace(name, |wr| {
+//   //     wr.write_line("use super::*;");
+//        for ptoken in progs {
+//            if let Token::Program{ref name, ref id, ref versions} = *ptoken {
+//                if let Token::Ident(ref name_str) = **name{
+//                    if let Token::Constant(id_num) = **id {
+//                        let prog_decoder_fn = format!("{}_decode", name_str.to_lowercase());
+//                        top_decoder(rustify(name_str).as_str(), wr, |wr| {
+//                            wr.match_block("header.program", |wr| {
+//                                wr.match_option(&format!("{}u32", id_num), &Vec::<String>::new(), |wr| {
+//                                    prog_decoder_call(&prog_decoder_fn, wr);
+//                                });
+//                                decoder_miss("program", wr);
+//                            });
+//                        });
+//                    }
+//                    ()
+//                }
+//            }
+//        }
+//   // });
+//
+//    true
+//}
 
-    true
-}
-
-fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
-    wr.namespace(name, |wr| {
-        wr.write_line("use super::*;");
-        for ptoken in progs {
-            if let Token::Program{ref name, ref id, ref versions} = *ptoken {
-                if let Token::Ident(ref name_str) = **name{
-                    write_program(name_str, &versions, wr);
-    //                write_service(name_str, &versions, wr);
-                    if let Token::Constant(id_num) = **id {
-                        write_decoder(name_str, id_num, versions, wr);
-                        write_encoder(name_str, versions, wr);
-                    }
-                    ()
-                }
-            }
-        }
-    });
-
-    true
-}
+// fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
+//     wr.namespace(name, |wr| {
+//         wr.write_line("use super::*;");
+//         for ptoken in progs {
+//             if let Token::Program{ref name, ref id, ref versions} = *ptoken {
+//                 if let Token::Ident(ref name_str) = **name{
+//                     write_program(name_str, &versions, wr);
+//                     write_service(name_str, &versions, wr);
+//                     if let Token::Constant(id_num) = **id {
+//                         write_decoder(name_str, id_num, versions, wr);
+//                         write_encoder(name_str, versions, wr);
+//                     }
+//                     ()
+//                 }
+//             }
+//         }
+//     });
+//     true
+// }
 
 #[derive(Debug)]
 struct CodegenState<'a> {
@@ -700,8 +747,9 @@ impl<'a, 'b, 'c> CodeGen<'a, 'b, 'c> {
             Ok("Dumped parse tree")
         } else {
             self.tokens = parser::parse(not_yet_parsed, dump_parse);
+            self.codec_wr.write_codec_header();
             self.types_wr.write_proto_header();
-            self.service_wr.write_types_header();
+            self.service_wr.write_service_header();
 
             self.codegen_all();
 
@@ -749,21 +797,25 @@ impl<'a, 'b, 'c> CodeGen<'a, 'b, 'c> {
                     write_typedef(def, self.types_wr);
                 },
                 Token::Program{ref name, ref id, ref versions} => {
-                    match **name {
-                        Token::Ident(ref name_str) => {
-                            write_program(name_str, &versions, self.types_wr);
-                        },
-                        _ => { unreachable!() }
+                    if let Token::Ident(ref name_str) = **name{
+                        write_codec(name_str, &versions, self.codec_wr);
+                        write_program(name_str, &versions, self.types_wr);
+                        write_service(name_str, &versions, self.service_wr);
+                        if let Token::Constant(id_num) = **id {
+                            write_decoder(name_str, id_num, versions, self.types_wr);
+                            write_encoder(name_str, versions, self.types_wr);
+                        };
                     }
                 },
-                Token::Namespace{ref name, ref progs} => {
-                    match **name {
-                        Token::Ident(ref s) => {
-                            write_namespace(s, &progs, self.types_wr);
-                        },
-                        _ => { unreachable!() }
-                    }
-                }
+
+                //Token::Namespace{ref name, ref progs} => {
+                //    match **name {
+                //        Token::Ident(ref s) => {
+                //            write_namespace(s, &progs, self.service_wr);
+                //        },
+                //        _ => { unreachable!() }
+                //    }
+                //}
                 _ => {
                     println!("Codegen isn't supported for this token yet");
                     break;
