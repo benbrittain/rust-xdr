@@ -19,7 +19,6 @@ pub fn to_bytes<T>(value: &T, buf: &mut Vec<u8>) -> EncoderResult<()>
 {
     let mut ser = Serializer::new(buf);
     try!(value.serialize(&mut ser));
-//  Ok(ser.into_inner())
     Ok(())
 }
 
@@ -60,8 +59,7 @@ macro_rules! xdr_enum {
                     }
 
                     fn visit_i32<E>(self, value: i32) -> Result<$name, E> where E: ::serde::de::Error {
-                        // Rust does not come with a simple way of converting a
-                        // number to an enum, so use a big `match`.
+`.
                         match value {
                             $( $value => Ok($name::$variant), )*
                             _ => Err(E::custom(
@@ -70,7 +68,6 @@ macro_rules! xdr_enum {
                         }
                     }
                 }
-                // Deserialize the enum from a u64.
                 deserializer.deserialize_i32(Visitor)
             }
         }
