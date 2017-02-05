@@ -424,7 +424,7 @@ fn write_codec(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter) -
     let app_req   = prog_name.replace("Prog", "ProgRequest");
     let app_res   = prog_name.replace("Prog", "ProgResponse");
 
-    wr.pub_struct(app_codec.clone(), |wr| {});
+    wr.pub_struct_no_body(app_codec.clone());
     wr.impl_("", "Codec", app_codec.as_str(), |wr| {
         wr.alias_impl("", "In", |wr| {
             wr.write(app_req.as_str());
@@ -435,7 +435,7 @@ fn write_codec(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter) -
         codec_fns(prog_name.as_str(), wr);
     });
 
-    wr.impl_("", "app_codec", app_codec.as_str(), |wr| {
+    wr.impl_("", "AppCodec", app_codec.as_str(), |wr| {
         app_codec_fn(prog_name.as_str(), wr);
     });
 
@@ -443,7 +443,7 @@ fn write_codec(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter) -
         wr.write(format!("XdrCodec<{}>", app_codec.as_str()));
     });
 
-    wr.pub_struct(protocol.clone(), |wr| {});
+    wr.pub_struct_no_body(protocol.clone());
     wr.impl_("<T: Io + 'static>", "ServerProto<T>", protocol.as_str(), |wr| {
         wr.alias_impl("", "Request", |wr| {
             wr.write(format!("xdr_rpc::XdrRequest<{}>", app_req.as_str()));

@@ -11,13 +11,13 @@ pub fn codec_fns<S: AsRef<str>>(prog_name: S, wr: &mut CodeWriter) {
         wr.write_line("unreachable!()");
     });
     wr.expr_block("fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()>", "", |wr| {
-        wr.write_line("rpc::encode(msg, buf)");
+        wr.write_line("encode(msg, buf)");
     });
 }
 
 pub fn app_codec_fn<S: AsRef<str>>(prog_name: S, wr: &mut CodeWriter) {
     wr.expr_block("fn app_decode(&mut self, prog: u32, version: u32, procedure: u32, buf: &mut EasyBuf) -> io::Result<Option<Self::In>>", "", |wr| {
-        wr.write_line("rpc::experimentdbd_prog_decode(prog, version, procedure, buf)");
+        wr.write_line("experimentdbd_prog_decode(prog, version, procedure, buf)");
     });
 }
 
