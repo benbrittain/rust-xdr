@@ -59,7 +59,6 @@ macro_rules! xdr_enum {
                     }
 
                     fn visit_i32<E>(self, value: i32) -> Result<$name, E> where E: ::serde::de::Error {
-`.
                         match value {
                             $( $value => Ok($name::$variant), )*
                             _ => Err(E::custom(
