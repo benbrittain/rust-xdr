@@ -51,7 +51,6 @@ fn convert_basic_token(ident: &Token, is_type: bool) -> String {
             }
         },
         Token::Constant(ref val) => { val.to_string() },
-        //_ => { String::from("UNSUPORTED_TYPE") }
         _ => { format!("UNSUPORTED TYPE: {:?}", ident) }
     };
     type_
@@ -625,55 +624,8 @@ fn write_encoder(prog_name: &String, versions: &Vec<Token>,
     true
 }
 
-//fn write_codec(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
-//   // wr.namespace(name, |wr| {
-//   //     wr.write_line("use super::*;");
-//        for ptoken in progs {
-//            if let Token::Program{ref name, ref id, ref versions} = *ptoken {
-//                if let Token::Ident(ref name_str) = **name{
-//                    if let Token::Constant(id_num) = **id {
-//                        let prog_decoder_fn = format!("{}_decode", name_str.to_lowercase());
-//                        top_decoder(rustify(name_str).as_str(), wr, |wr| {
-//                            wr.match_block("header.program", |wr| {
-//                                wr.match_option(&format!("{}u32", id_num), &Vec::<String>::new(), |wr| {
-//                                    prog_decoder_call(&prog_decoder_fn, wr);
-//                                });
-//                                decoder_miss("program", wr);
-//                            });
-//                        });
-//                    }
-//                    ()
-//                }
-//            }
-//        }
-//   // });
-//
-//    true
-//}
-
-// fn write_namespace(name: &String, progs: &Vec<Token>, wr: &mut CodeWriter) -> bool {
-//     wr.namespace(name, |wr| {
-//         wr.write_line("use super::*;");
-//         for ptoken in progs {
-//             if let Token::Program{ref name, ref id, ref versions} = *ptoken {
-//                 if let Token::Ident(ref name_str) = **name{
-//                     write_program(name_str, &versions, wr);
-//                     write_service(name_str, &versions, wr);
-//                     if let Token::Constant(id_num) = **id {
-//                         write_decoder(name_str, id_num, versions, wr);
-//                         write_encoder(name_str, versions, wr);
-//                     }
-//                     ()
-//                 }
-//             }
-//         }
-//     });
-//     true
-// }
-
 #[derive(Debug)]
 struct CodegenState<'a> {
-    //table: HashMap<&'a str, User<'a>>,
     name: &'a str,
     table: HashMap<(Token, Token), Token>,
     hoister: Vec<Token>,
@@ -710,14 +662,12 @@ impl<'a> CodegenState<'a> {
 
     fn get_symbol(&mut self, ns_tkn: &Token, id_tkn: &Token) -> Option<Token> {
         let key = (ns_tkn.clone(), id_tkn.clone());
-        Some(self.table.get(&key).unwrap().clone())
+        match self.table.get(&key) {
+            Some(res) => Some(self.table.get(&key).unwrap().clone()),
+            None => panic!("{:?}:{:?} is not registered yet!", ns_tkn, id_tkn)
+        }
     }
 }
-
-
-
-//    codegen(wr, tokens, &mut tab);
-//    codegen(wr, Some(tab.get_hoisted()), &mut tab)
 
 pub struct CodeGen<'a: 'b, 'b: 'c, 'c> {
 	types_wr: &'c mut CodeWriter<'a>,
