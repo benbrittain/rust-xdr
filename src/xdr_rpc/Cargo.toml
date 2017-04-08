@@ -1,0 +1,6 @@
+[package]
+name = "xdr_rpc"
+version = "0.1.0"
+authors = ["Ben Brittain <ben@okcupid.com>"]
+
+[dependencies]

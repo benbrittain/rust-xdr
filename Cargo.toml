@@ -8,7 +8,7 @@ name = "serde_xdr"
 path = "src/serde_xdr/lib.rs"
 
 [[bin]]
-name = "rust-xdr"
+name = "xdrgen"
 path = "src/main.rs"
 
 #[[bin]]

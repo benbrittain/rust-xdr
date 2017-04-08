@@ -415,14 +415,15 @@ fn write_version_set(prog_name: &String, versions: &Vec<Token>,
 }
 
 fn write_codec(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter) -> bool {
-    let prog_name = rustify(prog_name);
+    let rust_prog_name = rustify(prog_name);
 
     // TODO more rigourous way of getting these vals
-    let app_codec = prog_name.replace("Prog", "AppCodec");
-    let codec     = prog_name.replace("Prog", "Codec");
-    let protocol  = prog_name.replace("Prog", "Protocol");
-    let app_req   = prog_name.replace("Prog", "ProgRequest");
-    let app_res   = prog_name.replace("Prog", "ProgResponse");
+    let app_codec = rust_prog_name.replace("Prog", "AppCodec");
+    let app_prog  = prog_name.replace("_PROG", "").to_lowercase();
+    let codec     = rust_prog_name.replace("Prog", "Codec");
+    let protocol  = rust_prog_name.replace("Prog", "Protocol");
+    let app_req   = rust_prog_name.replace("Prog", "ProgRequest");
+    let app_res   = rust_prog_name.replace("Prog", "ProgResponse");
 
     wr.pub_struct_no_body(app_codec.clone());
     wr.impl_("", "Codec", app_codec.as_str(), |wr| {
@@ -432,11 +433,11 @@ fn write_codec(prog_name: &String, versions: &Vec<Token>, wr: &mut CodeWriter) -
         wr.alias_impl("", "Out", |wr| {
             wr.write(app_res.as_str());
         });
-        codec_fns(prog_name.as_str(), wr);
+        codec_fns(rust_prog_name.as_str(), wr);
     });
 
     wr.impl_("", "AppCodec", app_codec.as_str(), |wr| {
-        app_codec_fn(prog_name.as_str(), wr);
+        app_codec_fn(app_prog.as_str(), wr);
     });
 
     wr.pub_alias(codec.as_str(), |wr| {

@@ -59,8 +59,8 @@ impl<'a> CodeWriter<'a> {
         self.comment("boilerplate for tokio services");
         self.write_line("use std::{io, result};");
         self.write_line("use tokio_core::io::{Io, Framed, Codec, EasyBuf};");
-        self.write_line("use xdrgen::{xdr_codec, xdr_rpc};");
-        self.write_line("use xdrgen::xdr_codec::{AppCodec, XdrCodec};");
+        self.write_line("use xdr_rpc::{xdr_codec, xdr_rpc};");
+        self.write_line("use xdr_rpc::xdr_codec::{AppCodec, XdrCodec};");
         self.write_line("use tokio_proto::pipeline::ServerProto;");
         self.write_line("use serde_xdr;");
         self.write_line("use xdrgen::prot::*;");
@@ -84,7 +84,7 @@ impl<'a> CodeWriter<'a> {
 		self.write_line("use futures::{future, Future, BoxFuture};");
 		self.write_line("use tokio_core::io::EasyBuf;");
 		self.write_line("use futures_cpupool::CpuPool;");
-		self.write_line("use xdrgen::xdr_rpc;");
+		self.write_line("use xdr_rpc::xdr_rpc;");
 		self.write_line("use xdrgen::prot::*;");
 		self.write_line("use std::default::Default;");
         self.write_line("use serde_xdr;");
@@ -98,7 +98,7 @@ impl<'a> CodeWriter<'a> {
         self.write_line("#[allow(dead_code)]");
         self.write_line("use std::{io, fmt};");
         self.write_line("use serde_xdr;");
-        self.write_line("use xdrgen::xdr_rpc;");
+        self.write_line("use xdr_rpc::xdr_rpc;");
         self.write_line("use tokio_core::io::EasyBuf;");
         self.write_line("");
     }
